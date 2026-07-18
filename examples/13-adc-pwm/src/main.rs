@@ -20,6 +20,14 @@
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
+// defmt のトランスポート層。probe-rs では RTT、espflash では esp-println を使う。
+// どちらも副作用のためだけにリンクする
+#[cfg(feature = "espflash")]
+use esp_println as _;
+#[cfg(feature = "probe-rs")]
+use rtt_target as _;
+
+use defmt::info;
 use esp_hal::analog::adc::{Adc, AdcCalBasic, AdcConfig, Attenuation};
 use esp_hal::clock::CpuClock;
 use esp_hal::gpio::DriveMode;
@@ -30,7 +38,6 @@ use esp_hal::ledc::{LSGlobalClkSource, Ledc, LowSpeed, channel, timer};
 use esp_hal::peripherals::ADC1;
 use esp_hal::time::Rate;
 use esp_hal::timer::timg::TimerGroup;
-use log::info;
 
 // esp-idf形式ブートローダが要求するアプリ記述子
 esp_bootloader_esp_idf::esp_app_desc!();
@@ -44,7 +51,9 @@ async fn main(_spawner: Spawner) -> ! {
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    esp_println::logger::init_logger_from_env();
+    // probe-rs 使用時は RTT 経由の defmt を初期化する
+    #[cfg(feature = "probe-rs")]
+    rtt_target::rtt_init_defmt!();
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let sw_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
@@ -94,7 +103,8 @@ async fn main(_spawner: Spawner) -> ! {
         let duty_pct = ((raw as u32 * 100) / 4095).min(100) as u8;
         channel0.set_duty(duty_pct).unwrap();
 
-        info!("ADC生値 = {raw:4}, PWMデューティ = {duty_pct:3}%");
+        // defmt は幅指定（{:4}）に非対応のため桁揃え無しで表示する
+        info!("ADC生値 = {}, PWMデューティ = {}%", raw, duty_pct);
 
         Timer::after(Duration::from_millis(500)).await;
     }

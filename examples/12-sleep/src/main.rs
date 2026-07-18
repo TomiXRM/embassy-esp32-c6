@@ -28,9 +28,12 @@
 
 use core::time::Duration as CoreDuration;
 
+use defmt::info;
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
+// defmt の global_logger をリンクする。probe-rs では rtt-target、
+// espflash では esp-println がそれぞれ defmt ログの出口になる。
 use esp_hal::clock::CpuClock;
 use esp_hal::gpio::{Level, Output, OutputConfig, RtcPinWithResistors};
 use esp_hal::interrupt::software::SoftwareInterruptControl;
@@ -38,17 +41,22 @@ use esp_hal::rtc_cntl::sleep::{Ext1WakeupSource, TimerWakeupSource, WakeupLevel}
 use esp_hal::rtc_cntl::{Rtc, reset_reason, wakeup_cause};
 use esp_hal::system::Cpu;
 use esp_hal::timer::timg::TimerGroup;
-use log::info;
+#[cfg(feature = "espflash")]
+use esp_println as _;
+#[cfg(feature = "probe-rs")]
+use rtt_target as _;
 
 // esp-idf形式ブートローダが要求するアプリ記述子
 esp_bootloader_esp_idf::esp_app_desc!();
 
 #[esp_rtos::main]
 async fn main(_spawner: Spawner) -> ! {
+    // probe-rs 経由の defmt(RTT) を初期化する（espflash 時は何もしない）
+    #[cfg(feature = "probe-rs")]
+    rtt_target::rtt_init_defmt!();
+
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
-
-    esp_println::logger::init_logger_from_env();
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let sw_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
@@ -56,9 +64,14 @@ async fn main(_spawner: Spawner) -> ! {
 
     // なぜ起動（リセット）したのかを表示する。
     // 電源投入なら PowerOn 系、ディープスリープ復帰なら CoreDeepSleep になる
-    info!("リセット要因: {:?}", reset_reason(Cpu::ProCpu));
+    // reset_reason/wakeup_cause の戻り値型は defmt::Format 非対応（Debugのみ）
+    // なので Debug2Format でラップして出力する
+    info!(
+        "リセット要因: {}",
+        defmt::Debug2Format(&reset_reason(Cpu::ProCpu))
+    );
     // ディープスリープから復帰した場合、その原因（Timer / Ext1 など）が分かる
-    info!("復帰要因: {:?}", wakeup_cause());
+    info!("復帰要因: {}", defmt::Debug2Format(&wakeup_cause()));
 
     // LEDを3回点滅させて「起動した」ことを目でも確認できるようにする
     let mut led = Output::new(peripherals.GPIO10, Level::Low, OutputConfig::default());

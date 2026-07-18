@@ -8,13 +8,19 @@ rust-version.workspace = true
 name = "channel"
 path = "src/main.rs"
 
+[features]
+default = ["probe-rs"]
+probe-rs = ["dep:rtt-target"]
+espflash = ["dep:esp-println"]
+
 [dependencies]
 esp-hal.workspace = true
 esp-rtos.workspace = true
 esp-bootloader-esp-idf.workspace = true
-esp-println.workspace = true
 esp-backtrace.workspace = true
-log.workspace = true
+defmt.workspace = true
+rtt-target = { workspace = true, optional = true }
+esp-println = { workspace = true, optional = true }
 embassy-executor.workspace = true
 embassy-time.workspace = true
 embassy-sync.workspace = true

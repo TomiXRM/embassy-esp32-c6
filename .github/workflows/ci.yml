@@ -20,9 +20,20 @@ jobs:
       - name: cargo fmt --check
         working-directory: examples
         run: cargo fmt --all -- --check
-      - name: cargo check --workspace
+      - name: cargo check --workspace (default = probe-rs/defmt)
         working-directory: examples
         run: cargo check --workspace
+      - name: cargo check (espflash feature)
+        working-directory: examples
+        run: |
+          for c in blinky button uart i2c spi embassy-tasks channel wifi ble esp-now \
+                   twai sleep adc-pwm keymatrix ble-hid sensor-node https rmt-ws2812 \
+                   pcnt etm ledc-fade final-wireless-button; do
+            cargo check -p "$c" --no-default-features --features espflash
+          done
+      - name: host tests (final-wireless-button protocol)
+        working-directory: examples
+        run: cargo test -p final-wireless-button --lib
 
   site:
     name: build site

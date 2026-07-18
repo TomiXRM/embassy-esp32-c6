@@ -31,15 +31,23 @@ edition = "2024"
 rust-version = "1.95"
 
 # 教材全体のバージョン固定（docs/project/versions.md と一致させること）
+#
+# ログ/書き込みの既定は probe-rs + defmt(RTT)。各クレートは feature で切替える:
+#   - 既定(default = ["probe-rs"]): defmt::* → rtt-target(defmt) → RTT → `probe-rs run`
+#   - `--no-default-features --features espflash`: defmt::* → esp-println(defmt-espflash) →
+#     USBシリアル → `espflash flash --monitor --log-format defmt`
+# どちらのモードでもコードは defmt マクロのまま。global_logger は片方のみリンクされる。
 [workspace.dependencies]
-esp-hal = { version = "~1.1.0", features = ["esp32c6", "unstable", "log-04"] }
-esp-rtos = { version = "0.3.0", features = ["esp32c6", "embassy", "log-04"] }
-esp-radio = { version = "0.18.0", features = ["esp32c6", "log-04"] }
-esp-bootloader-esp-idf = { version = "0.5.0", features = ["esp32c6", "log-04"] }
-esp-println = { version = "0.17.0", features = ["esp32c6", "log-04"] }
-esp-backtrace = { version = "0.19.0", features = ["esp32c6", "panic-handler", "println"] }
+esp-hal = { version = "~1.1.0", features = ["esp32c6", "unstable", "defmt"] }
+esp-rtos = { version = "0.3.0", features = ["esp32c6", "embassy", "defmt"] }
+esp-radio = { version = "0.18.0", features = ["esp32c6", "defmt"] }
+esp-bootloader-esp-idf = { version = "0.5.0", features = ["esp32c6", "defmt"] }
+# defmt ログの2つの出口（クレート側で optional + feature 切替）
+defmt = "1.0.1"
+rtt-target = { version = "0.6.2", features = ["defmt"] }
+esp-println = { version = "0.17.0", features = ["esp32c6", "defmt-espflash"] }
+esp-backtrace = { version = "0.19.0", features = ["esp32c6", "panic-handler", "defmt"] }
 esp-alloc = "0.10.0"
-log = "0.4.27"
 embassy-executor = "0.10.0"
 embassy-time = "0.5"
 embassy-sync = "0.7"
@@ -55,7 +63,7 @@ heapless = "0.9"
 bme280-rs = { version = "0.3", default-features = false, features = ["async"] }
 static_cell = "2.1"
 # HTTPSクライアント（TLS 1.3のみのembedded-tlsをTLSバックエンドに使用）
-reqwless = { version = "0.14", default-features = false, features = ["embedded-tls", "alloc", "log"] }
+reqwless = { version = "0.14", default-features = false, features = ["embedded-tls", "alloc"] }
 # embedded-tls 0.18はderのプレリリース版APIに依存しており、der 0.8.0以降ではビルドが壊れる。
 # そのためembedded-tls 0.18が開発された時点のrc版に固定する（cargo updateでの破壊を防ぐ）
 der = "=0.8.0-rc.10"

@@ -1,6 +1,6 @@
 ---
 title: "7. 開発環境の構築"
-description: rustupでRustを入れ、RISC-Vターゲットとespflashを追加して、ESP32-C6の開発環境を作ります。macOS/Windows/Linux共通の手順です。
+description: rustupでRustを入れ、RISC-Vターゲットとprobe-rs（既定の書き込み・デバッグツール）を追加して、ESP32-C6の開発環境を作ります。macOS/Windows/Linux共通の手順です。
 part: 1
 lesson: 7
 difficulty: basic
@@ -16,6 +16,7 @@ last_verified: "2026-07-18"
 sources:
   - https://docs.espressif.com/projects/rust/book/getting-started/toolchain.html
   - https://rustup.rs/
+  - https://probe.rs/
   - https://github.com/esp-rs/espflash
   - https://github.com/esp-rs/esp-generate
 ---
@@ -24,16 +25,17 @@ sources:
 
 - rustupでRust（stable）をインストールできる
 - ESP32-C6用のビルドターゲットを追加できる
-- 書き込みツールespflashとプロジェクト生成ツールesp-generateを導入できる
+- 書き込み・デバッグツールprobe-rs（既定）とプロジェクト生成ツールesp-generateを導入できる
+- 代替の書き込みツールespflashも入れられる
 - インストールが成功したかを自分で確認できる
 
 ## 先に結論
 
-やることは4つだけです。①rustupでRust本体を入れる、②`rustup target add riscv32imac-unknown-none-elf`でC6用のターゲットを足す、③`cargo install espflash`で書き込みツールを入れる、④`cargo install esp-generate`でプロジェクト生成ツールを入れる。ESP32-C6はRISC-VのCPUなので、**ふつうのstable Rustだけで開発できます**。特別なコンパイラは不要です。手順はmacOS・Windows・Linuxでほぼ共通です。
+やることは4つだけです。①rustupでRust本体を入れる、②`rustup target add riscv32imac-unknown-none-elf`でC6用のターゲットを足す、③`cargo install probe-rs-tools --locked`で書き込み・デバッグツールを入れる、④`cargo install esp-generate`でプロジェクト生成ツールを入れる。この教材の**既定の書き込みツールはprobe-rs**です。espflashは代替として使えます（あとで入れてもかまいません）。ESP32-C6はRISC-VのCPUなので、**ふつうのstable Rustだけで開発できます**。特別なコンパイラは不要です。手順はmacOS・Windows・Linuxでほぼ共通です。
 
 ## 身近なたとえ
 
-環境構築は「工作を始める前に、机に道具を並べる作業」です。Rustは工具セット、ターゲットはC6専用のドリルビット、espflashは完成品をボードへ運ぶ配達係です。
+環境構築は「工作を始める前に、机に道具を並べる作業」です。Rustは工具セット、ターゲットはC6専用のドリルビット、probe-rsは完成品をボードへ運びつつ、動いている様子まで見せてくれる配達係兼監視員です。
 
 たとえと違うのは、道具がぜんぶ無料で、コマンド数行でそろうことです。一度そろえれば、この教材の最後まで同じ道具を使い続けます。
 
@@ -42,12 +44,13 @@ sources:
 ```mermaid
 graph LR
   A[あなたのRustコード] -->|"rustc（Rust本体）"| B[riscv32imac用の実行ファイル]
-  B -->|espflash| C[ESP32-C6のフラッシュ]
+  B -->|probe-rs| C[ESP32-C6のフラッシュ]
 ```
 
 - **rustup**: Rust本体（コンパイラrustcとビルドツールcargo）を管理するインストーラです
 - **ターゲット `riscv32imac-unknown-none-elf`**: 「RISC-V 32bit・OSなし」向けの機械語を出すための部品です。パソコン用のRustに、マイコン用の出力先を追加するイメージです
-- **espflash**: できあがったプログラムをUSB経由でボードに書き込むツールです
+- **probe-rs**: できあがったプログラムをUSB経由でボードに書き込み、さらにデバッグやログ表示までできるツールです。この教材の既定の書き込みツールです
+- **espflash（代替）**: 書き込みとシリアルモニタに特化した別のツールです。probe-rsの代わりに使えます
 - **esp-generate**: ESP32シリーズ用のプロジェクトのひな形を作るツールです（次のページで使います）
 
 ## 手順1: Rustを入れる（rustup）
@@ -74,13 +77,25 @@ rustup target add riscv32imac-unknown-none-elf
 
 これはOS共通です。名前の意味は「riscv32imac＝RISC-V 32bitでIMAC拡張あり」「none＝OSなし」「elf＝実行ファイル形式」です。
 
-## 手順3: espflashを入れる
+## 手順3: probe-rsを入れる（既定の書き込み・デバッグツール）
+
+```bash
+cargo install probe-rs-tools --locked
+```
+
+`cargo install`はRust製ツールをソースからビルドして入れるので、数分かかることがあります。エラーが出ずに終われば成功です。`--locked`は動作確認済みの依存バージョンで固定してビルドする指定です。
+
+probe-rsは**書き込み＋デバッグ＋ログ表示**を1つでこなします。ログはdefmtという軽量な仕組みで送られ、probe-rsが受け取って表示します（詳しくは[9. 書き込みとログ表示](/embassy-esp32-c6/part01/09-flash-monitor/)で扱います）。
+
+### 代替: espflashを入れる（任意）
+
+probe-rsの代わりに書き込みたい場合は、espflashも入れられます。
 
 ```bash
 cargo install espflash
 ```
 
-`cargo install`はRust製ツールをソースからビルドして入れるので、数分かかることがあります。エラーが出ずに終われば成功です。
+espflashは**書き込み＋シリアルモニタ**に特化したツールです。probe-rsとespflashのどちらを使う場合も、開発ボードのUSBケーブル1本でつなげば書き込みからログ表示までできます。違いは、probe-rsがデバッグ（プログラムを止めて中を調べる機能）まで持つのに対し、espflashは書き込みとシリアル表示に絞られている点です。
 
 ## 手順4: esp-generateを入れる
 
@@ -97,16 +112,18 @@ cargo install esp-generate
 ```bash
 rustc --version
 rustup target list --installed
-espflash --version
+probe-rs --version
 esp-generate --version
 ```
 
 ```text
 rustc 1.97.1 （例。これ以降のstableなら可）
 riscv32imac-unknown-none-elf を含む一覧
-espflash 4.5.0
+probe-rs 0.29.x
 esp-generate 1.3.0
 ```
+
+espflashも入れた人は`espflash --version`（4.5.0など）でも確認できます。
 
 ## OSごとの注意
 
@@ -121,8 +138,8 @@ sudo usermod -a -G dialout $USER
 ## よくある失敗
 
 - **`cargo: command not found`（コマンドが見つからない）**: rustupの直後はPATH（コマンドの検索経路）がまだ反映されていません。ターミナルを開き直すと直ります
-- **`cargo install espflash`が途中で失敗する**: リンカやCコンパイラが無い環境で起きます。macOSはコマンドラインツール、Windowsはビルドツール、Linuxは`build-essential`相当（gcc, pkg-config, libudev-dev等）を入れてから再実行してください
-- **espflashは入ったのにボードが見えない**: 環境構築の問題ではなく、ケーブルが充電専用の可能性が高いです。[5. 必要な部品](/embassy-esp32-c6/part01/05-parts/)で確認した「データ通信対応ケーブル」を使ってください
+- **`cargo install probe-rs-tools`が途中で失敗する**: リンカやCコンパイラが無い環境で起きます。macOSはコマンドラインツール、Windowsはビルドツール、Linuxは`build-essential`相当（gcc, pkg-config, libudev-dev等）を入れてから再実行してください。espflashのインストールでも同じ対処です
+- **probe-rsは入ったのにボードが見えない**: 環境構築の問題ではなく、ケーブルが充電専用の可能性が高いです。[5. 必要な部品](/embassy-esp32-c6/part01/05-parts/)で確認した「データ通信対応ケーブル」を使ってください
 
 ## やってみよう
 
@@ -143,7 +160,8 @@ sudo usermod -a -G dialout $USER
 
 ## まとめ
 
-- rustup（stable）→ ターゲット追加 → `cargo install espflash` → `cargo install esp-generate` の4手順
+- rustup（stable）→ ターゲット追加 → `cargo install probe-rs-tools --locked` → `cargo install esp-generate` の4手順
+- 既定の書き込みツールはprobe-rs（書き込み＋デバッグ＋ログ）。espflash（書き込み＋シリアル）は代替として任意で入れられる
 - C6はRISC-VなのでstableのRustだけで開発できる
 - 確認は`--version`系コマンド。Linuxはシリアルポートの権限に注意
 

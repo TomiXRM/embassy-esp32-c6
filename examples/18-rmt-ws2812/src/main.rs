@@ -35,7 +35,14 @@ use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::rmt::{PulseCode, Rmt, TxChannelConfig, TxChannelCreator};
 use esp_hal::time::Rate;
 use esp_hal::timer::timg::TimerGroup;
-use log::info;
+
+use defmt::info;
+// defmt の global_logger を提供するクレートをリンクする（feature で切替）。
+// probe-rs: rtt-target(RTT)、espflash: esp-println(USBシリアル)。
+#[cfg(feature = "espflash")]
+use esp_println as _;
+#[cfg(feature = "probe-rs")]
+use rtt_target as _;
 
 // esp-idf形式ブートローダが要求するアプリ記述子
 esp_bootloader_esp_idf::esp_app_desc!();
@@ -86,10 +93,12 @@ fn ws2812_pulses(r: u8, g: u8, b: u8) -> [PulseCode; 25] {
 
 #[esp_rtos::main]
 async fn main(_spawner: Spawner) -> ! {
+    // defmt(RTT) の初期化。probe-rs モードのときだけ RTT を張る。
+    #[cfg(feature = "probe-rs")]
+    rtt_target::rtt_init_defmt!();
+
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
-
-    esp_println::logger::init_logger_from_env();
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let sw_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);

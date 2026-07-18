@@ -8,6 +8,11 @@ rust-version.workspace = true
 name = "wifi"
 path = "src/main.rs"
 
+[features]
+default = ["probe-rs"]
+probe-rs = ["dep:rtt-target"]
+espflash = ["dep:esp-println"]
+
 [dependencies]
 esp-hal.workspace = true
 # 無線使用時はesp-rtosにesp-radio/esp-alloc連携のfeatureが必要
@@ -16,9 +21,11 @@ esp-rtos = { workspace = true, features = ["esp-radio", "esp-alloc"] }
 esp-radio = { workspace = true, features = ["wifi"] }
 esp-alloc.workspace = true
 esp-bootloader-esp-idf.workspace = true
-esp-println.workspace = true
+# defmtログの2つの出口: probe-rs(RTT)ではrtt-target、espflashではesp-println
+defmt.workspace = true
+rtt-target = { workspace = true, optional = true }
+esp-println = { workspace = true, optional = true }
 esp-backtrace.workspace = true
-log.workspace = true
 embassy-executor.workspace = true
 embassy-time.workspace = true
 embassy-net.workspace = true

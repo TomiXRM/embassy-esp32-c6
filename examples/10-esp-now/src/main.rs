@@ -20,6 +20,7 @@
 #![no_std]
 #![no_main]
 
+use defmt::info;
 use embassy_executor::Spawner;
 use embassy_futures::select::{Either, select};
 use embassy_time::{Duration, Ticker};
@@ -29,7 +30,11 @@ use esp_hal::efuse::{InterfaceMacAddress, interface_mac_address};
 use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::timer::timg::TimerGroup;
 use esp_radio::esp_now::BROADCAST_ADDRESS;
-use log::info;
+// defmtログの出口を選ぶ: probe-rsではrtt-target、espflashではesp-printlnをリンクする
+#[cfg(feature = "espflash")]
+use esp_println as _;
+#[cfg(feature = "probe-rs")]
+use rtt_target as _;
 
 // esp-idf形式ブートローダが要求するアプリ記述子
 esp_bootloader_esp_idf::esp_app_desc!();
@@ -39,10 +44,12 @@ const PAYLOAD_LEN: usize = 10;
 
 #[esp_rtos::main]
 async fn main(_spawner: Spawner) -> ! {
+    // probe-rsモードではRTTを初期化し、defmtのグローバルロガーを起動する
+    #[cfg(feature = "probe-rs")]
+    rtt_target::rtt_init_defmt!();
+
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
-
-    esp_println::logger::init_logger_from_env();
 
     // 無線スタックはヒープを使うため、アロケータを用意する（公式例と同じ72KB）
     esp_alloc::heap_allocator!(size: 72 * 1024);
@@ -66,7 +73,8 @@ async fn main(_spawner: Spawner) -> ! {
     // 自分のMACアドレス（工場出荷時にeFuseへ書き込まれている固有番号）。
     // ESP-NOWはWi-FiのStation用MACアドレスで送信される
     let mac = interface_mac_address(InterfaceMacAddress::Station);
-    info!("自分のMACアドレス: {}", mac);
+    // MACアドレスは6バイトを16進で表示する（defmtのバイト列ヒント）
+    info!("自分のMACアドレス: {=[u8]:02x}", mac.as_bytes());
 
     let mut counter: u32 = 0;
     let mut ticker = Ticker::every(Duration::from_secs(1));
@@ -88,15 +96,16 @@ async fn main(_spawner: Spawner) -> ! {
             // パケット受信 → 送信元MACアドレスと内容をログ表示
             Either::Second(received) => {
                 let data = received.data();
+                // MAC・データはバイト列なので16進表示する（defmtのバイト列ヒント）
                 info!(
-                    "受信 送信元MAC={:02x?} 宛先MAC={:02x?} データ={:02x?}",
+                    "受信 送信元MAC={=[u8]:02x} 宛先MAC={=[u8]:02x} データ={=[u8]:02x}",
                     received.info.src_address, received.info.dst_address, data
                 );
                 // このプログラム同士なら10バイト（カウンタ+MAC）のはず
                 if data.len() == PAYLOAD_LEN {
                     let peer_counter = u32::from_le_bytes([data[0], data[1], data[2], data[3]]);
                     info!(
-                        "  → 相手のカウンタ={} 相手のMAC={:02x?}",
+                        "  → 相手のカウンタ={} 相手のMAC={=[u8]:02x}",
                         peer_counter,
                         &data[4..]
                     );

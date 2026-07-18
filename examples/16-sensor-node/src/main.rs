@@ -35,9 +35,12 @@
 use core::time::Duration as CoreDuration;
 
 use bme280_rs::{AsyncBme280, Configuration, Oversampling, Sample, SensorMode};
+use defmt::{error, info, warn};
 use embassy_executor::Spawner;
 use embassy_time::{Delay, Duration, Timer};
 use esp_backtrace as _;
+// defmt の global_logger をリンクする。probe-rs では rtt-target、
+// espflash では esp-println がそれぞれ defmt ログの出口になる。
 use esp_hal::Async;
 use esp_hal::clock::CpuClock;
 use esp_hal::i2c::master::{Config as I2cConfig, Error as I2cError, I2c};
@@ -48,7 +51,10 @@ use esp_hal::rtc_cntl::{Rtc, reset_reason, wakeup_cause};
 use esp_hal::system::Cpu;
 use esp_hal::time::Rate;
 use esp_hal::timer::timg::TimerGroup;
-use log::{error, info, warn};
+#[cfg(feature = "espflash")]
+use esp_println as _;
+#[cfg(feature = "probe-rs")]
+use rtt_target as _;
 
 // esp-idf形式ブートローダが要求するアプリ記述子
 esp_bootloader_esp_idf::esp_app_desc!();
@@ -83,10 +89,12 @@ static mut TEMP_COUNT: u32 = 0;
 
 #[esp_rtos::main]
 async fn main(_spawner: Spawner) -> ! {
+    // probe-rs 経由の defmt(RTT) を初期化する（espflash 時は何もしない）
+    #[cfg(feature = "probe-rs")]
+    rtt_target::rtt_init_defmt!();
+
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
-
-    esp_println::logger::init_logger_from_env();
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let sw_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
@@ -94,8 +102,13 @@ async fn main(_spawner: Spawner) -> ! {
 
     // なぜ起動したのかを表示する。
     // 電源投入なら PowerOn 系、ディープスリープ復帰なら CoreDeepSleep + Timer になる
-    info!("リセット要因: {:?}", reset_reason(Cpu::ProCpu));
-    info!("復帰要因: {:?}", wakeup_cause());
+    // reset_reason/wakeup_cause の戻り値型は defmt::Format 非対応（Debugのみ）
+    // なので Debug2Format でラップして出力する
+    info!(
+        "リセット要因: {}",
+        defmt::Debug2Format(&reset_reason(Cpu::ProCpu))
+    );
+    info!("復帰要因: {}", defmt::Debug2Format(&wakeup_cause()));
 
     // RTC RAM上のstatic変数への可変参照をここで1回だけ作る。
     //
@@ -132,9 +145,10 @@ async fn main(_spawner: Spawner) -> ! {
             // （設定で無効化した項目は None になる）ため、matchで取り出す
             match (sample.temperature, sample.humidity, sample.pressure) {
                 (Some(t), Some(h), Some(p)) => {
-                    // 気圧はPa単位で返るので、なじみのあるhPaに直して表示
+                    // 気圧はPa単位で返るので、なじみのあるhPaに直して表示。
+                    // defmt は精度指定（{:.2}等）が使えないため、f32をそのまま出す
                     info!(
-                        "温度: {:.2} C / 湿度: {:.1} %RH / 気圧: {:.1} hPa",
+                        "温度: {=f32} C / 湿度: {=f32} %RH / 気圧: {=f32} hPa",
                         t,
                         h,
                         p / 100.0
@@ -142,7 +156,8 @@ async fn main(_spawner: Spawner) -> ! {
                     t
                 }
                 (t, h, p) => {
-                    warn!("一部の測定値が取得できません: {:?} {:?} {:?}", t, h, p);
+                    // Option<f32> は defmt::Format を実装するので {} で整形できる
+                    warn!("一部の測定値が取得できません: {} {} {}", t, h, p);
                     // 温度だけでも取れていればそれを使う
                     t.unwrap_or(f32::NAN)
                 }
@@ -150,7 +165,7 @@ async fn main(_spawner: Spawner) -> ! {
         }
         Err(e) => {
             // センサ未接続・配線ミスなどでもサイクルは継続する（劣化運転）
-            error!("BME280の測定に失敗: {:?}（プレースホルダ値で続行）", e);
+            error!("BME280の測定に失敗: {}（プレースホルダ値で続行）", e);
             f32::NAN
         }
     };
@@ -171,7 +186,8 @@ async fn main(_spawner: Spawner) -> ! {
         } else {
             ((*temp_count as usize) + i) % HISTORY_SIZE
         };
-        info!("  [{}] {:.2} C", i, temp_history[pos]);
+        // defmt は精度指定が使えないため f32 をそのまま出す
+        info!("  [{}] {=f32} C", i, temp_history[pos]);
     }
 
     info!(

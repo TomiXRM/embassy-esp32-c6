@@ -21,6 +21,18 @@ path = "src/main.rs"
 name = "receiver"
 path = "src/bin/receiver.rs"
 
+# ログ/書き込みの出口を feature で切替える（詳細は examples/Cargo.toml の解説）:
+#   - default = ["probe-rs"]: defmt → rtt-target(RTT) → `probe-rs run`
+#   - --no-default-features --features espflash: defmt → esp-println → `espflash`
+# feature 名は dep:rtt-target / dep:esp-println を有効化するが、これらの実体は
+# 下の [target.'cfg(target_os = "none")'.dependencies] にある（ハードウェアビルド専用）。
+# ホスト向けテストビルドでは target 依存が無効になるため、feature を有効にしても
+# 実体が入らずビルドは通る（純粋モジュールの cargo test はそのまま動く）。
+[features]
+default = ["probe-rs"]
+probe-rs = ["dep:rtt-target"]
+espflash = ["dep:esp-println"]
+
 # ハードウェア依存クレートは「組み込みターゲット(target_os = "none")のときだけ」
 # 有効にする。こうしておくと protocol/config/error などの純粋モジュールを
 #   cargo test -p final-wireless-button --lib --target <ホストtarget>
@@ -30,10 +42,15 @@ esp-hal.workspace = true
 esp-rtos = { workspace = true, features = ["esp-radio", "esp-alloc"] }
 esp-radio = { workspace = true, features = ["wifi", "esp-now", "unstable"] }
 esp-bootloader-esp-idf.workspace = true
-esp-println.workspace = true
 esp-backtrace.workspace = true
 esp-alloc.workspace = true
-log.workspace = true
+# defmt はハードウェアモジュール（app/radio/button/heartbeat/main/receiver）でのみ使う。
+# 純粋モジュール（protocol/error/config）はログを持たないためホストテストに影響しない。
+defmt.workspace = true
+# defmt ログの2つの出口。上位の [features] が dep:rtt-target / dep:esp-println で
+# 有効化する（実体は target 依存なのでホストビルドには入らない）。
+rtt-target = { workspace = true, optional = true }
+esp-println = { workspace = true, optional = true }
 embassy-executor.workspace = true
 embassy-time.workspace = true
 embassy-sync.workspace = true

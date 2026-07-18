@@ -21,6 +21,7 @@
 
 use core::sync::atomic::AtomicBool;
 
+use defmt::info;
 use embassy_executor::Spawner;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
@@ -28,7 +29,6 @@ use embassy_sync::signal::Signal;
 use embassy_time::{Duration, with_timeout};
 use esp_hal::gpio::{Input, Output};
 use esp_radio::esp_now::EspNow;
-use log::info;
 
 use crate::button::{self, ButtonEvent};
 use crate::config;

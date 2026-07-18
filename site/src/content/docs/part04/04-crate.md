@@ -87,7 +87,7 @@ fn main() {
 次に、この教材の examples が実際に使っている指定を見てみます（これは抜粋です。完全な記述は examples/Cargo.toml（ワークスペース共通の依存表）を見てください）。
 
 ```toml
-esp-hal = { version = "~1.1.0", features = ["esp32c6", "unstable", "log-04"] }
+esp-hal = { version = "~1.1.0", features = ["esp32c6", "unstable", "defmt"] }
 ```
 
 `features = [...]` が **feature（フィーチャー）** です。crateの持つ機能のうち、どれを有効にするかのスイッチです。esp-halは1つのcrateで多数のチップに対応しているため、`esp32c6` featureで「ESP32-C6用のコードを有効にする」と指示しています。

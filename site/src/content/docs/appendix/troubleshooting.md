@@ -6,42 +6,44 @@ status: complete
 
 開発中によくあるトラブルを集めました。各項目は「症状 → 原因の見分け方 → 対処」の順に書いています。まずは症状の見出しから探してください。
 
-前提となる環境はこの教材の標準構成（ESP32-C6-DevKitC-1、espflash、esp-hal 1.1系 + esp-rtos + embassy-executor 0.10系）です。バージョンの正確な組み合わせはプロジェクト内の`versions.md`の表に従ってください。
+前提となる環境はこの教材の標準構成（ESP32-C6-DevKitC-1、書き込み・ログは既定でprobe-rs + defmt(RTT)／代替でespflash、esp-hal 1.1系 + esp-rtos + embassy-executor 0.10系）です。バージョンの正確な組み合わせはプロジェクト内の`versions.md`の表に従ってください。
 
 ## 接続と書き込みのトラブル
 
 ### ボードがパソコンに認識されない
 
-**症状**: USBでつないでも`espflash`がポートを見つけられない。ポート一覧に何も出ない。
+**症状**: USBでつないでも`probe-rs`（または`espflash`）がボード／ポートを見つけられない。`No probe found`などが出る、ポート一覧に何も出ない。
 
 **原因の見分け方**:
 - ケーブルが充電専用（データ線なし）ではないか。別のケーブルで試すのが最短です
 - ESP32-C6-DevKitC-1にはUSB-Cポートが2つあります。1つはCP2102N（USB-UARTブリッジ）経由、もう1つはチップ内蔵のUSB Serial/JTAGです。どちらに挿しているかを確認します
-- CP2102N側を使う場合、OSによってはドライバが必要なことがあります
+- **既定のprobe-rsは内蔵USB Serial/JTAG（「USB」刻印側）を使います**。CP2102N（UART）側に挿しているとprobeとして見えません
+- CP2102N側を使う場合（espflash利用時など）、OSによってはドライバが必要なことがあります
 
-**対処**: データ通信できるケーブルに替え、まずはUSB Serial/JTAG側（チップ直結）で試します。`espflash flash`はポートを自動検出しますが、複数候補があると選択を求められるので、表示されたポート名を確認して選びます。それでも出ない場合はドライバの導入、別のUSBポート、別のパソコンの順に切り分けます。
+**対処**: データ通信できるケーブルに替え、probe-rsを使うときはUSB Serial/JTAG側（チップ直結）に挿します。それでも認識されないときは、**BOOTボタン（GPIO9）を押しながらRSTを押して離し、BOOTを離す**とダウンロードモードに入り、書き込めることがあります。なお`espflash flash`はポートを自動検出し、複数候補があると選択を求めます。切り分けはドライバの導入、別のUSBポート、別のパソコンの順に進めます。
 
 ### 書き込みに失敗する（Failed to connectなど）
 
-**症状**: ポートは見えるのに、`espflash flash`が接続エラーで止まる。
+**症状**: ボードは見えるのに、`probe-rs run`（または`espflash flash`）が接続エラーで止まる。
 
 **原因の見分け方**:
 - チップが書き込みモード（ダウンロードブート）に入れていないことがほとんどです
 - ESP32-C6-DevKitC-1ではGPIO8がWS2812 LEDのデータ線と兼用で、しかもストラッピングピンです。リセットの瞬間にGPIO8がLowへ引かれる配線をしていると、書き込みモードに入れません
-- 書き込み中にシリアルモニタなど他のプログラムが同じポートを開いていても失敗します
+- 書き込み中に別のログ表示やシリアルモニタが同じポート／probeを開いていても失敗します
 
-**対処**: **BOOTボタン（GPIO9）を押しながらRSTボタンを押して離し、その後BOOTを離す**と手動で書き込みモードに入れます。この状態で`espflash flash`を実行してください。GPIO8やGPIO9（およびGPIO4/5/15のストラッピングピン）に外付け回路をつないでいる場合は、一度外して試します。ポートを開いている他のツールは閉じます。
+**対処**: **BOOTボタン（GPIO9）を押しながらRSTボタンを押して離し、その後BOOTを離す**と手動でダウンロードモード（書き込みモード）に入れます。この状態で`cargo run`（既定はprobe-rs）を実行してください。GPIO8やGPIO9（およびGPIO4/5/15のストラッピングピン）に外付け回路をつないでいる場合は、一度外して試します。probeやポートを開いている他のツールは閉じます。probe-rsで解決しないときは、`--no-default-features --features espflash`でespflashに切り替え、runnerを`espflash flash --monitor --chip esp32c6 --log-format defmt`にして試すのも切り分けになります。
 
-### シリアル出力（ログ）が見えない
+### ログが見えない
 
 **症状**: 書き込みは成功するのに、ログが1行も表示されない。
 
 **原因の見分け方**:
-- モニタを起動していない（書き込みだけして終わっている）
-- ログを見ているポートが違う。ログの出口は構成によりUART0（GPIO16/17、CP2102N側）またはUSB Serial/JTAG側です。挿しているポートと出口が食い違うと何も見えません
-- `log`のマクロ（`info!`など）を使っているのに、esp-printlnの設定やログレベルの初期化が抜けている
+- **使っているツールとログの出口が食い違っている**のが最も多い原因です。この教材のログはdefmtで、既定のprobe-rsは**RTT経由のdefmtログ**を表示します。espflash用のシリアル出力（esp-println）はprobe-rsでは表示されません。逆に、espflashに切り替えたのにrunnerがprobe-rsのままだと表示されません
+- feature（機能スイッチ）と実行ツールの組み合わせがずれている。probe-rsで動かすなら既定（`probe-rs` feature）、espflashで動かすなら`--no-default-features --features espflash`にrunnerのespflash化をそろえます
+- espflash利用時にログを見ているポートが違う。シリアルの出口はUART0（GPIO16/17、CP2102N側）またはUSB Serial/JTAG側です。挿しているポートと出口が食い違うと見えません
+- `defmt::info!`などを使っているのに、probe-rsモードで`rtt_target::rtt_init_defmt!()`の初期化が抜けている
 
-**対処**: `espflash flash --monitor`で書き込みとモニタを一度に行うのが確実です。表示されない場合はもう一方のUSB-Cポートに挿し替えて再度モニタします。esp-generateで生成したプロジェクトはログ設定込みなので、自作構成の場合はesp-printlnとlogのfeature（log-04）がCargo.tomlにそろっているか確認してください。
+**対処**: 既定のprobe-rsなら`cargo run`（runnerが`probe-rs run`）でそのままdefmtログが出ます。ログの出口を切り替えたいときは、**ツール（runner）とfeatureを必ずセットで**変えます（probe-rs⇔`--no-default-features --features espflash`＋espflash用runner）。espflashで見えないときはもう一方のUSB-Cポートに挿し替えます。自作構成では、defmtとログ出口のクレート（probe-rs用はrtt-target、espflash用はesp-println）のfeatureが`examples/`のCargo.tomlと一致しているか確認してください。
 
 ## ビルドのトラブル
 
@@ -65,7 +67,7 @@ rustup target add riscv32imac-unknown-none-elf
 
 **原因の見分け方**: esp-halはチップごとのfeature（`esp32c6`）を必須とし、さらにADC・LEDC（PWM）・MCPWM・TWAI・sleep（rtc_cntl）・timerなどは`unstable` featureの配下にあります。使いたいモジュール名がエラーに出ているなら、まずfeature不足を疑います。
 
-**対処**: Cargo.tomlのesp-halに`features = ["esp32c6", "unstable", "log-04"]`のようにfeatureを指定します。無線ではesp-radioの`wifi`に加え、BLE（Bluetooth Low Energy）やESP-NOWは`unstable`featureも必要です。教材の`examples/`のCargo.tomlが正しい組み合わせの見本なので、そのまま写すのが安全です。
+**対処**: Cargo.tomlのesp-halに`features = ["esp32c6", "unstable", "defmt"]`のようにfeatureを指定します。無線ではesp-radioの`wifi`に加え、BLE（Bluetooth Low Energy）やESP-NOWは`unstable`featureも必要です。教材の`examples/`のCargo.tomlが正しい組み合わせの見本なので、そのまま写すのが安全です。
 
 ### バージョンが合わない（依存関係の解決に失敗する・APIが存在しない）
 

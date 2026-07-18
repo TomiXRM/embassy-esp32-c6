@@ -24,11 +24,18 @@
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
+// defmt のトランスポート層。probe-rs では RTT、espflash では esp-println を使う。
+// どちらも副作用のためだけにリンクする
+#[cfg(feature = "espflash")]
+use esp_println as _;
+#[cfg(feature = "probe-rs")]
+use rtt_target as _;
+
+use defmt::{error, info};
 use esp_hal::clock::CpuClock;
 use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::timer::timg::TimerGroup;
 use esp_hal::twai::{BaudRate, EspTwaiFrame, StandardId, TwaiConfiguration, TwaiMode};
-use log::{error, info};
 
 // esp-idf形式ブートローダが要求するアプリ記述子
 esp_bootloader_esp_idf::esp_app_desc!();
@@ -38,7 +45,9 @@ async fn main(_spawner: Spawner) -> ! {
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    esp_println::logger::init_logger_from_env();
+    // probe-rs 使用時は RTT 経由の defmt を初期化する
+    #[cfg(feature = "probe-rs")]
+    rtt_target::rtt_init_defmt!();
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let sw_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
@@ -71,15 +80,15 @@ async fn main(_spawner: Spawner) -> ! {
     loop {
         // --- 送信 ---
         match twai.transmit_async(&frame).await {
-            Ok(()) => info!("送信OK: {frame:?}"),
-            Err(e) => error!("送信エラー: {e:?}"),
+            Ok(()) => info!("送信OK: {}", frame),
+            Err(e) => error!("送信エラー: {}", e),
         }
 
         // --- 受信 ---
         // セルフテストモードなので、いま送ったフレームが自分に届く
         match twai.receive_async().await {
-            Ok(received) => info!("受信OK: {received:?}"),
-            Err(e) => error!("受信エラー: {e:?}"),
+            Ok(received) => info!("受信OK: {}", received),
+            Err(e) => error!("受信エラー: {}", e),
         }
 
         Timer::after(Duration::from_secs(1)).await;

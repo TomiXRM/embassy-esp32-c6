@@ -10,6 +10,7 @@
 
 use core::sync::atomic::{AtomicBool, Ordering};
 
+use defmt::{debug, info, warn};
 use embassy_futures::select::{Either3, select3};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Receiver;
@@ -17,7 +18,6 @@ use embassy_sync::signal::Signal;
 use embassy_time::{Duration, Instant, with_timeout};
 use esp_hal::gpio::{Level, Output};
 use esp_radio::esp_now::{BROADCAST_ADDRESS, EspNow, EspNowWifiInterface, PeerInfo};
-use log::{debug, info, warn};
 
 use crate::app::LinkState;
 use crate::button::ButtonEvent;
@@ -251,15 +251,18 @@ pub async fn receiver_loop(mut esp_now: EspNow<'static>, mut led: Output<'static
                 match Packet::from_bytes(received.data()) {
                     Err(e) => {
                         // 別プロトコルのパケットや壊れたパケットは捨てる
-                        warn!("[受信] 解読できないパケット: {:?}（src={:02x?}）", e, src);
+                        warn!(
+                            "[受信] 解読できないパケット: {:?}（src={=[u8]:02x}）",
+                            e, src
+                        );
                     }
                     Ok(Packet::Ack { seq }) => {
                         // 受信側にACKが届くのは想定外（送信側が返すことはない）
-                        debug!("[受信] 想定外のACKを無視 seq={} src={:02x?}", seq, src);
+                        debug!("[受信] 想定外のACKを無視 seq={} src={=[u8]:02x}", seq, src);
                     }
                     Ok(packet) => {
                         if !link_alive {
-                            info!("[受信] 送信側 {:02x?} からの受信を開始/再開", src);
+                            info!("[受信] 送信側 {=[u8]:02x} からの受信を開始/再開", src);
                             link_alive = true;
                         }
 
@@ -283,7 +286,7 @@ pub async fn receiver_loop(mut esp_now: EspNow<'static>, mut led: Output<'static
 
                         match packet {
                             Packet::Event { seq } => {
-                                info!("[受信] ボタンイベント! seq={} src={:02x?}", seq, src);
+                                info!("[受信] ボタンイベント! seq={} src={=[u8]:02x}", seq, src);
                                 // イベントは「押された」の合図なのでLEDを点灯。
                                 // 離された状態は次のハートビートで反映される
                                 led.set_high();
@@ -319,7 +322,7 @@ fn ensure_peer(esp_now: &EspNow<'_>, mac: &[u8; 6]) {
         encrypt: false,
     });
     match result {
-        Ok(()) => info!("[受信] ピア登録: {:02x?}", mac),
-        Err(e) => warn!("[受信] ピア登録失敗 {:02x?}: {:?}", mac, e),
+        Ok(()) => info!("[受信] ピア登録: {=[u8]:02x}", *mac),
+        Err(e) => warn!("[受信] ピア登録失敗 {=[u8]:02x}: {:?}", *mac, e),
     }
 }

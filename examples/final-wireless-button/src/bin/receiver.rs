@@ -17,6 +17,7 @@
 #![no_std]
 #![no_main]
 
+use defmt::info;
 use embassy_executor::Spawner;
 use esp_backtrace as _;
 use esp_hal::clock::CpuClock;
@@ -25,17 +26,24 @@ use esp_hal::gpio::{Level, Output, OutputConfig};
 use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::timer::timg::TimerGroup;
 use final_wireless_button::{app, config};
-use log::info;
+// defmt の global_logger を提供するクレートをリンクする（feature で切替）。
+// probe-rs: rtt-target(RTT)、espflash: esp-println(USBシリアル)。
+#[cfg(feature = "espflash")]
+use esp_println as _;
+#[cfg(feature = "probe-rs")]
+use rtt_target as _;
 
 // esp-idf形式ブートローダが要求するアプリ記述子
 esp_bootloader_esp_idf::esp_app_desc!();
 
 #[esp_rtos::main]
 async fn main(_spawner: Spawner) -> ! {
+    // defmt(RTT) の初期化。probe-rs モードのときだけ RTT を張る。
+    #[cfg(feature = "probe-rs")]
+    rtt_target::rtt_init_defmt!();
+
     let hal_config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(hal_config);
-
-    esp_println::logger::init_logger_from_env();
 
     // 無線スタックはヒープを使うため、アロケータを用意する（10-esp-nowと同じ）
     esp_alloc::heap_allocator!(size: 72 * 1024);
@@ -54,7 +62,10 @@ async fn main(_spawner: Spawner) -> ! {
     esp_now.set_channel(config::WIFI_CHANNEL).unwrap();
 
     let mac = interface_mac_address(InterfaceMacAddress::Station);
-    info!("無線ボタン端末（受信側）起動 MAC={}", mac);
+    info!(
+        "無線ボタン端末（受信側）起動 MAC={=[u8]:02x}",
+        mac.as_bytes()
+    );
 
     // ボタン状態をミラーリングするLED
     let led = Output::new(peripherals.GPIO10, Level::Low, OutputConfig::default());

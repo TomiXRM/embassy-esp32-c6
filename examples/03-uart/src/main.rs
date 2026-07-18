@@ -18,7 +18,12 @@ use esp_hal::clock::CpuClock;
 use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::timer::timg::TimerGroup;
 use esp_hal::uart::{Config as UartConfig, Uart};
-use log::{error, info, warn};
+
+use defmt::{error, info, warn};
+#[cfg(feature = "espflash")]
+use esp_println as _;
+#[cfg(feature = "probe-rs")]
+use rtt_target as _;
 
 // esp-idf形式ブートローダが要求するアプリ記述子
 esp_bootloader_esp_idf::esp_app_desc!();
@@ -28,10 +33,11 @@ const MESSAGE: &str = "Hello, UART! from ESP32-C6\r\n";
 
 #[esp_rtos::main]
 async fn main(_spawner: Spawner) -> ! {
+    #[cfg(feature = "probe-rs")]
+    rtt_target::rtt_init_defmt!();
+
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
-
-    esp_println::logger::init_logger_from_env();
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let sw_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
@@ -66,7 +72,7 @@ async fn main(_spawner: Spawner) -> ! {
             // 受信成功 → UTF-8文字列に変換して表示
             Ok(Ok(())) => match core::str::from_utf8(&buf) {
                 Ok(s) => info!("受信: {}", s.trim_end()),
-                Err(_) => warn!("受信したがUTF-8として不正: {:02X?}", buf),
+                Err(_) => warn!("受信したがUTF-8として不正: {=[u8]:X}", &buf[..]),
             },
             // UARTの受信エラー（フレーミングエラーなど）
             Ok(Err(e)) => error!("受信エラー: {:?}", e),

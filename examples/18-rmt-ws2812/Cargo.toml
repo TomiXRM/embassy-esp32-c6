@@ -8,12 +8,21 @@ rust-version.workspace = true
 name = "rmt-ws2812"
 path = "src/main.rs"
 
+# ログ/書き込みの出口を feature で切替える（詳細は examples/Cargo.toml の解説）:
+#   - default = ["probe-rs"]: defmt → rtt-target(RTT) → `probe-rs run`
+#   - --no-default-features --features espflash: defmt → esp-println → `espflash`
+[features]
+default = ["probe-rs"]
+probe-rs = ["dep:rtt-target"]
+espflash = ["dep:esp-println"]
+
 [dependencies]
 esp-hal.workspace = true
 esp-rtos.workspace = true
 esp-bootloader-esp-idf.workspace = true
-esp-println.workspace = true
 esp-backtrace.workspace = true
-log.workspace = true
+defmt.workspace = true
+rtt-target = { workspace = true, optional = true }
+esp-println = { workspace = true, optional = true }
 embassy-executor.workspace = true
 embassy-time.workspace = true

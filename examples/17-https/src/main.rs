@@ -38,6 +38,7 @@
 #![no_std]
 #![no_main]
 
+use defmt::{error, info, warn};
 use embassy_executor::Spawner;
 use embassy_net::dns::DnsSocket;
 use embassy_net::tcp::client::{TcpClient, TcpClientState};
@@ -52,9 +53,13 @@ use esp_hal::rng::Rng;
 use esp_hal::timer::timg::TimerGroup;
 use esp_radio::wifi::sta::StationConfig;
 use esp_radio::wifi::{Config as WifiConfig, ControllerConfig, Interface, WifiController};
-use log::{error, info, warn};
+// defmtログの出口を選ぶ: probe-rsではrtt-target、espflashではesp-printlnをリンクする
+#[cfg(feature = "espflash")]
+use esp_println as _;
 use reqwless::client::{HttpClient, TlsConfig, TlsVerify};
 use reqwless::request::Method;
+#[cfg(feature = "probe-rs")]
+use rtt_target as _;
 use static_cell::StaticCell;
 
 // esp-idf形式ブートローダが要求するアプリ記述子
@@ -87,10 +92,12 @@ static TLS_WRITE_BUFFER: StaticCell<[u8; 16640]> = StaticCell::new();
 
 #[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
+    // probe-rsモードではRTTを初期化し、defmtのグローバルロガーを起動する
+    #[cfg(feature = "probe-rs")]
+    rtt_target::rtt_init_defmt!();
+
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
-
-    esp_println::logger::init_logger_from_env();
 
     // Wi-FiドライバとTLS処理はヒープを使うため、esp-allocでヒープを確保する
     // （公式exampleと同じ構成: 回収済みRAM 64KiB + 通常RAM 36KiB）
@@ -143,7 +150,11 @@ async fn main(spawner: Spawner) -> ! {
     info!("IPアドレスの取得を待っています...");
     stack.wait_config_up().await;
     if let Some(config) = stack.config_v4() {
-        info!("IPアドレスを取得しました: {}", config.address);
+        // embassy-net(smoltcp)のIP型はdefmt::Formatを実装しないためDisplayを橋渡しする
+        info!(
+            "IPアドレスを取得しました: {}",
+            defmt::Display2Format(&config.address)
+        );
     }
 
     // ---- ここからHTTPSクライアントの準備 ----
@@ -168,7 +179,7 @@ async fn main(spawner: Spawner) -> ! {
     let mut client = HttpClient::new_with_tls(&tcp_client, &dns_socket, tls_config);
 
     loop {
-        info!("{URL} へHTTPS GETリクエストを送ります");
+        info!("{} へHTTPS GETリクエストを送ります", URL);
 
         // ヘッダ受信用のバッファ（本文の一部もここに入る）
         let mut rx_buffer = [0u8; 4096];
@@ -177,7 +188,11 @@ async fn main(spawner: Spawner) -> ! {
         let mut request = match client.request(Method::GET, URL).await {
             Ok(request) => request,
             Err(e) => {
-                error!("接続またはTLSハンドシェイクに失敗しました: {e:?}");
+                // reqwless::Errorはdefmt::Formatを実装しないためDebugを橋渡しする
+                error!(
+                    "接続またはTLSハンドシェイクに失敗しました: {:?}",
+                    defmt::Debug2Format(&e)
+                );
                 Timer::after(Duration::from_secs(60)).await;
                 continue;
             }
@@ -187,13 +202,20 @@ async fn main(spawner: Spawner) -> ! {
         let response = match request.send(&mut rx_buffer).await {
             Ok(response) => response,
             Err(e) => {
-                error!("リクエストの送受信に失敗しました: {e:?}");
+                error!(
+                    "リクエストの送受信に失敗しました: {:?}",
+                    defmt::Debug2Format(&e)
+                );
                 Timer::after(Duration::from_secs(60)).await;
                 continue;
             }
         };
 
-        info!("HTTPステータス: {:?}", response.status);
+        // reqwlessのStatusCodeもdefmt::Formatを実装しないためDebugを橋渡しする
+        info!(
+            "HTTPステータス: {:?}",
+            defmt::Debug2Format(&response.status)
+        );
 
         // 本文を先頭500バイトまで読み取る
         let mut reader = response.body().reader();
@@ -204,15 +226,18 @@ async fn main(spawner: Spawner) -> ! {
                 Ok(0) => break, // 本文の終わり
                 Ok(n) => total += n,
                 Err(e) => {
-                    warn!("本文の受信中にエラーが発生しました: {e:?}");
+                    warn!(
+                        "本文の受信中にエラーが発生しました: {:?}",
+                        defmt::Debug2Format(&e)
+                    );
                     break;
                 }
             }
         }
 
-        info!("---- 本文の先頭{total}バイト ----");
+        info!("---- 本文の先頭{}バイト ----", total);
         match core::str::from_utf8(&body[..total]) {
-            Ok(text) => info!("{text}"),
+            Ok(text) => info!("{}", text),
             Err(_) => info!("(UTF-8として表示できないデータでした)"),
         }
         info!("---- ここまで ----");
@@ -227,16 +252,16 @@ async fn main(spawner: Spawner) -> ! {
 async fn connection_task(mut controller: WifiController<'static>) {
     info!("Wi-Fi接続管理タスクを開始します");
     loop {
-        info!("SSID「{SSID}」へ接続します...");
+        info!("SSID「{}」へ接続します...", SSID);
         match controller.connect_async().await {
             Ok(connected) => {
-                info!("Wi-Fiに接続しました: {connected:?}");
+                info!("Wi-Fiに接続しました: {:?}", connected);
                 // 切断されるまでここで待つ
                 let disconnected = controller.wait_for_disconnect_async().await.ok();
-                warn!("Wi-Fiが切断されました: {disconnected:?}");
+                warn!("Wi-Fiが切断されました: {:?}", disconnected);
             }
             Err(e) => {
-                error!("Wi-Fi接続に失敗しました: {e:?}");
+                error!("Wi-Fi接続に失敗しました: {:?}", e);
             }
         }
         // 少し待ってから再接続する

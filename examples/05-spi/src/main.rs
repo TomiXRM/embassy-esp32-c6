@@ -13,6 +13,14 @@
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
+// defmt のトランスポート層。probe-rs では RTT、espflash では esp-println を使う。
+// どちらも副作用のためだけにリンクする
+#[cfg(feature = "espflash")]
+use esp_println as _;
+#[cfg(feature = "probe-rs")]
+use rtt_target as _;
+
+use defmt::{error, info, warn};
 use esp_hal::clock::CpuClock;
 use esp_hal::gpio::{Level, Output, OutputConfig};
 use esp_hal::interrupt::software::SoftwareInterruptControl;
@@ -20,7 +28,6 @@ use esp_hal::spi::Mode;
 use esp_hal::spi::master::{Config as SpiConfig, Spi};
 use esp_hal::time::Rate;
 use esp_hal::timer::timg::TimerGroup;
-use log::{error, info, warn};
 
 // esp-idf形式ブートローダが要求するアプリ記述子
 esp_bootloader_esp_idf::esp_app_desc!();
@@ -33,7 +40,9 @@ async fn main(_spawner: Spawner) -> ! {
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    esp_println::logger::init_logger_from_env();
+    // probe-rs 使用時は RTT 経由の defmt を初期化する
+    #[cfg(feature = "probe-rs")]
+    rtt_target::rtt_init_defmt!();
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let sw_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
@@ -70,15 +79,21 @@ async fn main(_spawner: Spawner) -> ! {
         // 結果はunwrapせず、matchで場合分けして扱う
         match result {
             Ok(()) if buf == TX_DATA => {
-                info!("OK: 送信 {:02X?} → 受信 {:02X?}", TX_DATA, buf);
+                // defmt のバイト列16進（各バイト2桁0埋め）。小文字表示になる
+                info!(
+                    "OK: 送信 {=[u8]:02x} → 受信 {=[u8]:02x}",
+                    &TX_DATA[..],
+                    &buf[..]
+                );
             }
             Ok(()) => {
                 warn!(
-                    "NG: 送信 {:02X?} と受信 {:02X?} が一致しません。GPIO18とGPIO20の配線を確認してください",
-                    TX_DATA, buf
+                    "NG: 送信 {=[u8]:02x} と受信 {=[u8]:02x} が一致しません。GPIO18とGPIO20の配線を確認してください",
+                    &TX_DATA[..],
+                    &buf[..]
                 );
             }
-            Err(e) => error!("SPI転送エラー: {:?}", e),
+            Err(e) => error!("SPI転送エラー: {}", e),
         }
 
         Timer::after(Duration::from_secs(1)).await;

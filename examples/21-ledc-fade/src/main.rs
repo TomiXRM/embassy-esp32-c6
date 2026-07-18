@@ -16,6 +16,7 @@
 #![no_std]
 #![no_main]
 
+use defmt::{error, info};
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
@@ -27,17 +28,23 @@ use esp_hal::ledc::timer::TimerIFace;
 use esp_hal::ledc::{LSGlobalClkSource, Ledc, LowSpeed, channel, timer};
 use esp_hal::time::Rate;
 use esp_hal::timer::timg::TimerGroup;
-use log::{error, info};
+// defmtログの出口を選ぶ: probe-rsではrtt-target、espflashではesp-printlnをリンクする
+#[cfg(feature = "espflash")]
+use esp_println as _;
+#[cfg(feature = "probe-rs")]
+use rtt_target as _;
 
 // esp-idf形式ブートローダが要求するアプリ記述子
 esp_bootloader_esp_idf::esp_app_desc!();
 
 #[esp_rtos::main]
 async fn main(_spawner: Spawner) -> ! {
+    // probe-rsモードではRTTを初期化し、defmtのグローバルロガーを起動する
+    #[cfg(feature = "probe-rs")]
+    rtt_target::rtt_init_defmt!();
+
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
-
-    esp_println::logger::init_logger_from_env();
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let sw_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
@@ -79,10 +86,10 @@ async fn main(_spawner: Spawner) -> ! {
         // 2000msかけて start% → end% へハードウェアが自動でフェードする。
         // パラメータが不正（範囲外・時間が長すぎ等）だとErrが返るのでmatchで処理
         match channel0.start_duty_fade(start, end, 2000) {
-            Ok(()) => info!("フェード開始: {start}% → {end}% (2000ms)"),
+            Ok(()) => info!("フェード開始: {}% → {}% (2000ms)", start, end),
             Err(e) => {
                 // ここに来るのはパラメータ設定ミスのとき（教材の値では起きないはず）
-                error!("フェードを開始できませんでした: {e:?}");
+                error!("フェードを開始できませんでした: {:?}", e);
                 Timer::after(Duration::from_secs(1)).await;
                 continue;
             }
@@ -92,7 +99,7 @@ async fn main(_spawner: Spawner) -> ! {
         // LEDCハードウェアの仕事。CPUは250msごとに別の仕事（ログ出力）ができる
         while channel0.is_duty_fade_running() {
             counter += 1;
-            info!("フェード中もCPUは別の仕事をしています: {counter}");
+            info!("フェード中もCPUは別の仕事をしています: {}", counter);
             Timer::after(Duration::from_millis(250)).await;
         }
 

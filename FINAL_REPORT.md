@@ -1,6 +1,17 @@
 # 最終報告
 
-作成日: 2026-07-18（本編）/ 同日追記: 応用編1〜4
+作成日: 2026-07-18（本編）/ 同日追記: 応用編1〜4 / 2026-07-19追記: ツールチェーンをprobe-rs+defmtへ移行
+
+## 追記(2026-07-19): 書き込み・ログ基盤を probe-rs + defmt へ移行
+
+- 動機: probe-rsは他チップにも使えるデバッグホストで、書き込み＋ブレークポイント＋ログを一元化できるため既定を espflash から切替
+- 実施: 全22 examplesを esp-println+log → **defmt(RTT)** に移行。`.cargo/config.toml` の runner を `probe-rs run --chip esp32c6` に。espflashは `--features espflash`（defmt-over-serial）で残す二本立て
+- 検証: `cargo check --workspace`（probe-rs既定）と全22クレートの `--features espflash` の**両モードでゼロエラー**、`cargo fmt --check` クリーン、final-wireless-buttonのホストテスト10/10維持。CIに両モード＋ホストテストを追加
+- defmtの書式差（精度指定不可→float全精度表示、byte列は `{=[u8]:02x}`、Format非実装型は Display2Format/Debug2Format）を各クレートで解消
+- **実機未検証**: 作業時に実機（XIAO ESP32-C6）がUSBで `!matched`（構成未確定）となりダウンロードモードに入れられず、書き込み・実機ログ表示は未確認。コンパイル検証のみ。ボードをダウンロードモードにできれば検証再開可能
+- USB診断結果: デバイスはEspressif VID 0x303A / PID 0x1001（ネイティブUSB Serial/JTAG）で列挙されるがインターフェース0個。ROM側のクリーンUSB（BOOT+RESETでダウンロードモード）で回避する想定
+
+
 
 ## 追記: 応用編（本編120ページ完成後の拡張）
 

@@ -15,12 +15,19 @@
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
+// defmt のトランスポート層。probe-rs では RTT、espflash では esp-println を使う。
+// どちらも副作用（パニックハンドラやトランスポート登録）のためだけにリンクする
+#[cfg(feature = "espflash")]
+use esp_println as _;
+#[cfg(feature = "probe-rs")]
+use rtt_target as _;
+
+use defmt::{error, info, warn};
 use esp_hal::clock::CpuClock;
 use esp_hal::i2c::master::{Config as I2cConfig, Error as I2cError, I2c};
 use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::time::Rate;
 use esp_hal::timer::timg::TimerGroup;
-use log::{error, info, warn};
 
 // esp-idf形式ブートローダが要求するアプリ記述子
 esp_bootloader_esp_idf::esp_app_desc!();
@@ -33,7 +40,9 @@ async fn main(_spawner: Spawner) -> ! {
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    esp_println::logger::init_logger_from_env();
+    // probe-rs 使用時は RTT 経由の defmt を初期化する
+    #[cfg(feature = "probe-rs")]
+    rtt_target::rtt_init_defmt!();
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let sw_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
@@ -59,7 +68,8 @@ async fn main(_spawner: Spawner) -> ! {
     for addr in 0x08u8..0x78 {
         match i2c.write_async(addr, &[0x00]).await {
             Ok(()) => {
-                info!("  デバイスを発見: 0x{:02X}", addr);
+                // defmt は幅指定に非対応のため 0 埋め無しの16進で表示する
+                info!("  デバイスを発見: 0x{=u8:x}", addr);
                 if addr == SHT30_ADDR {
                     sht30_found = true;
                 }
@@ -67,13 +77,13 @@ async fn main(_spawner: Spawner) -> ! {
             // ACKが返らない = そのアドレスにデバイスはいない（正常なこと）
             Err(I2cError::AcknowledgeCheckFailed(_)) => {}
             // それ以外はバス自体の異常（配線ミス・プルアップ不足など）
-            Err(e) => warn!("  0x{:02X} でバスエラー: {:?}", addr, e),
+            Err(e) => warn!("  0x{=u8:x} でバスエラー: {}", addr, e),
         }
     }
 
     if !sht30_found {
         warn!(
-            "SHT30 (0x{:02X}) が見つかりません。配線を確認してください",
+            "SHT30 (0x{=u8:x}) が見つかりません。配線を確認してください",
             SHT30_ADDR
         );
         loop {
@@ -89,7 +99,7 @@ async fn main(_spawner: Spawner) -> ! {
         // 単発測定コマンド 0x2C06（クロックストレッチ有効・高再現性）を送る。
         // I2Cではコマンドを上位バイト・下位バイトの順で送る
         if let Err(e) = i2c.write_async(SHT30_ADDR, &[0x2C, 0x06]).await {
-            error!("測定コマンドの送信に失敗: {:?}", e);
+            error!("測定コマンドの送信に失敗: {}", e);
             continue;
         }
 
@@ -112,9 +122,11 @@ async fn main(_spawner: Spawner) -> ! {
                 let temp = -45.0 + 175.0 * (raw_temp as f32) / 65535.0;
                 let humi = 100.0 * (raw_humi as f32) / 65535.0;
 
-                info!("温度: {:.1} C / 湿度: {:.1} %RH", temp, humi);
+                // defmt は精度指定（{:.1}）に非対応のため f32 をそのまま出力する
+                // （単位は 温度=℃, 湿度=%RH）
+                info!("温度: {=f32} C / 湿度: {=f32} %RH", temp, humi);
             }
-            Err(e) => error!("測定値の読み出しに失敗: {:?}", e),
+            Err(e) => error!("測定値の読み出しに失敗: {}", e),
         }
     }
 }

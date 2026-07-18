@@ -74,6 +74,12 @@ GPIO10 ──[330Ω]──▶|── GND
 
 ```rust
 //! 01-blinky: 最初のLチカ
+//!
+//! GPIO10に接続した外付けLED（330Ω抵抗経由）を1秒間隔で点滅させます。
+//! ESP32-C6-DevKitC-1のオンボードLEDはWS2812B（GPIO8）で、
+//! 単純なON/OFFでは光らないため、この例では外付けLEDを使います。
+//!
+//! 配線: GPIO10 → 抵抗330Ω → LEDアノード(+) → LEDカソード(-) → GND
 
 #![no_std]
 #![no_main]
@@ -85,17 +91,23 @@ use esp_hal::clock::CpuClock;
 use esp_hal::gpio::{Level, Output, OutputConfig};
 use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::timer::timg::TimerGroup;
-use log::info;
+
+use defmt::info;
+#[cfg(feature = "espflash")]
+use esp_println as _;
+#[cfg(feature = "probe-rs")]
+use rtt_target as _;
 
 // esp-idf形式ブートローダが要求するアプリ記述子
 esp_bootloader_esp_idf::esp_app_desc!();
 
 #[esp_rtos::main]
 async fn main(_spawner: Spawner) -> ! {
+    #[cfg(feature = "probe-rs")]
+    rtt_target::rtt_init_defmt!();
+
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
-
-    esp_println::logger::init_logger_from_env();
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let sw_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
@@ -140,6 +152,23 @@ async fn main(_spawner: Spawner) -> ! {
 Embassyで動く`main`の入口です。`async`は「待っている間に他の仕事へ切り替えられる関数」の印。戻り値の`-> !`は「この関数は永遠に戻らない」という意味です。マイコンのプログラムには「終了」がないためです。
 
 ```rust
+use defmt::info;
+#[cfg(feature = "espflash")]
+use esp_println as _;
+#[cfg(feature = "probe-rs")]
+use rtt_target as _;
+```
+
+ログは`defmt`という軽量な仕組みで書きます。`#[cfg(feature = "...")]`は「この機能が有効なときだけこの行を使う」という指定で、既定（probe-rs）ではRTT経由の出口（rtt-target）を、代替（espflash）ではシリアル経由の出口（esp-println）を選びます。コード本体は`defmt::info!`のまま、出口だけを切り替えられる仕組みです。
+
+```rust
+#[cfg(feature = "probe-rs")]
+rtt_target::rtt_init_defmt!();
+```
+
+既定のprobe-rsのとき、defmtのログをRTTへ流す準備をします。espflashのときはこの行はコンパイルされません（出口が違うため不要です）。
+
+```rust
 let peripherals = esp_hal::init(config);
 ```
 
@@ -173,24 +202,24 @@ loop {
 配線を確認してからUSBケーブルをつなぎ、プロジェクトのフォルダで実行します。
 
 ```bash
-cargo run --release
+cargo run -p blinky
 ```
 
-ビルド→書き込み→モニタ表示が自動で行われます（前のページで設定した通りです）。期待される結果は次の2つです。
+自分で作った1プロジェクトの中なら`cargo run`だけでかまいません。ビルド→書き込み→ログ表示が自動で行われます（前のページで設定した通り、既定はprobe-rsです）。期待される結果は次の2つです。
 
-- モニタに `Lチカを開始します` と表示される
+- defmtのログに `INFO  Lチカを開始します` と表示される
 - LEDが0.5秒点灯・0.5秒消灯を繰り返す
 
 ## よくある失敗
 
 - **LEDが光らない（ログは出ている）**: ほとんどが配線ミスです。①LEDの向き（長い足が抵抗側・GPIO10側）、②GNDにつないでいるか、③GPIO10の隣のピンに挿していないか、の順に確認してください。プログラムは動いているので、ハード側の問題です
-- **書き込みに失敗する**: ポートを選び間違えたか、他のモニタが開きっぱなしです。前ページの[よくある失敗](/embassy-esp32-c6/part01/09-flash-monitor/)を見直してください
+- **書き込みに失敗する・ボードが見えない**: 前のログ表示が開きっぱなしか、ダウンロードモードに入れていないことが多いです。前ページの[よくある失敗](/embassy-esp32-c6/part01/09-flash-monitor/)を見直し、必要ならBOOTを押しながらリセットしてから再実行してください
 - **ボードのRGB LEDを光らせようとGPIO8に変えたが光らない**: WS2812Bは専用の信号が必要なため、このコードでは光りません。仕様どおりの動きです
 - **`Timer::after`でビルドエラーが出る**: `esp_rtos::start(...)`を消したり、呼ぶ前に`Timer`を使ったりすると起きます。Embassyの時計はこの行が起動しているためです
 
 ## やってみよう
 
-`from_millis(500)`の数字を2か所とも`100`に変えて、もう一度`cargo run --release`してみてください。点滅が速くなります。次に、点灯500ミリ秒・消灯1500ミリ秒のように**非対称な点滅**にしてみましょう。
+`from_millis(500)`の数字を2か所とも`100`に変えて、もう一度`cargo run -p blinky`してみてください。点滅が速くなります。次に、点灯500ミリ秒・消灯1500ミリ秒のように**非対称な点滅**にしてみましょう。
 
 ## 確認問題
 

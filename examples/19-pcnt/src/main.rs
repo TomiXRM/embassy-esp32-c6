@@ -23,13 +23,20 @@
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
+// defmt のトランスポート層。probe-rs では RTT、espflash では esp-println を使う。
+// どちらも副作用のためだけにリンクする
+#[cfg(feature = "espflash")]
+use esp_println as _;
+#[cfg(feature = "probe-rs")]
+use rtt_target as _;
+
+use defmt::info;
 use esp_hal::clock::CpuClock;
 use esp_hal::gpio::{Input, InputConfig, Level, Output, OutputConfig, Pull};
 use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::pcnt::Pcnt;
 use esp_hal::pcnt::channel::{CtrlMode, EdgeMode};
 use esp_hal::timer::timg::TimerGroup;
-use log::info;
 
 // esp-idf形式ブートローダが要求するアプリ記述子
 esp_bootloader_esp_idf::esp_app_desc!();
@@ -50,7 +57,9 @@ async fn main(spawner: Spawner) -> ! {
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    esp_println::logger::init_logger_from_env();
+    // probe-rs 使用時は RTT 経由の defmt を初期化する
+    #[cfg(feature = "probe-rs")]
+    rtt_target::rtt_init_defmt!();
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let sw_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);

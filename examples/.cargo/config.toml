@@ -1,5 +1,13 @@
+# 既定の書き込み・実行ツールは probe-rs（他チップにも使い回せるデバッグホスト）。
+# ログは defmt を RTT に流し、probe-rs run が読み取る。
 [target.riscv32imac-unknown-none-elf]
-runner = "espflash flash --monitor --chip esp32c6"
+runner = "probe-rs run --chip=esp32c6 --preverify --always-print-stacktrace --no-location"
+
+# ── espflash で焼きたい場合 ─────────────────────────────────────────────
+# 上の runner をコメントアウトし、下行を有効化した上で、
+#   cargo run -p <crate> --release --no-default-features --features espflash
+# のように espflash feature でビルドする（defmt を USB シリアルへ流し espflash が復号）。
+# runner = "espflash flash --monitor --chip esp32c6 --log-format defmt"
 
 [build]
 # esp-backtraceでバックトレースを得るために必要（性能へ多少影響）
@@ -7,4 +15,5 @@ rustflags = ["-C", "force-frame-pointers"]
 target = "riscv32imac-unknown-none-elf"
 
 [env]
-ESP_LOG = "info"
+# defmt のログレベル（ビルド時に確定）
+DEFMT_LOG = "info"

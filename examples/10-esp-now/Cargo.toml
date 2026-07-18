@@ -8,15 +8,22 @@ rust-version.workspace = true
 name = "esp-now"
 path = "src/main.rs"
 
+[features]
+default = ["probe-rs"]
+probe-rs = ["dep:rtt-target"]
+espflash = ["dep:esp-println"]
+
 [dependencies]
 esp-hal.workspace = true
 esp-rtos = { workspace = true, features = ["esp-radio", "esp-alloc"] }
 esp-radio = { workspace = true, features = ["wifi", "esp-now", "unstable"] }
 esp-bootloader-esp-idf.workspace = true
-esp-println.workspace = true
+# defmtログの2つの出口: probe-rs(RTT)ではrtt-target、espflashではesp-println
+defmt.workspace = true
+rtt-target = { workspace = true, optional = true }
+esp-println = { workspace = true, optional = true }
 esp-backtrace.workspace = true
 esp-alloc.workspace = true
-log.workspace = true
 embassy-executor.workspace = true
 embassy-time.workspace = true
 embassy-futures.workspace = true

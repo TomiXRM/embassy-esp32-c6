@@ -23,17 +23,23 @@
 #![no_std]
 #![no_main]
 
+use defmt::{info, warn};
 use embassy_executor::Spawner;
 use embassy_futures::join::join;
 use embassy_futures::select::{Either, select};
 use embassy_time::Timer;
 use esp_backtrace as _;
+// defmt の global_logger をリンクする。probe-rs では rtt-target、
+// espflash では esp-println がそれぞれ defmt ログの出口になる。
 use esp_hal::clock::CpuClock;
 use esp_hal::gpio::{Input, InputConfig, Pull};
 use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::timer::timg::TimerGroup;
+#[cfg(feature = "espflash")]
+use esp_println as _;
 use esp_radio::ble::controller::BleConnector;
-use log::{info, warn};
+#[cfg(feature = "probe-rs")]
+use rtt_target as _;
 use trouble_host::prelude::*;
 
 // esp-idf形式ブートローダが要求するアプリ記述子
@@ -71,10 +77,12 @@ struct BatteryService {
 
 #[esp_rtos::main]
 async fn main(_spawner: Spawner) {
+    // probe-rs 経由の defmt(RTT) を初期化する（espflash 時は何もしない）
+    #[cfg(feature = "probe-rs")]
+    rtt_target::rtt_init_defmt!();
+
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
-
-    esp_println::logger::init_logger_from_env();
 
     // 無線スタックはヒープを使うため、アロケータを用意する（公式例と同じ72KB）
     esp_alloc::heap_allocator!(size: 72 * 1024);
@@ -104,7 +112,8 @@ where
     // デバイスアドレス。テストしやすいよう固定のランダムアドレスを使う
     // （本来はチップのMACアドレスなどから作る）
     let address: Address = Address::random([0xff, 0x8f, 0x1a, 0x05, 0xe4, 0xff]);
-    info!("デバイスアドレス: {:?}", address);
+    // Address は defmt::Format 非対応のため、生の6バイトを16進で出す
+    info!("デバイスアドレス: {=[u8]:02x}", address.addr.raw());
 
     // ホストスタックが使うメモリ（接続・チャネル管理領域）を確保
     let mut resources: HostResources<DefaultPacketPool, CONNECTIONS_MAX, L2CAP_CHANNELS_MAX> =
@@ -169,31 +178,31 @@ async fn gatt_events_task<P: PacketPool>(
                     GattEvent::Read(event) => {
                         if event.handle() == level.handle {
                             info!(
-                                "[gatt] バッテリー残量が読み取られました: {:?}",
+                                "[gatt] バッテリー残量が読み取られました: {}",
                                 server.get(&level)
                             );
                         } else if event.handle() == button_pressed.handle {
                             info!(
-                                "[gatt] ボタン状態が読み取られました: {:?}",
+                                "[gatt] ボタン状態が読み取られました: {}",
                                 server.get(&button_pressed)
                             );
                         }
                     }
                     GattEvent::Write(event) => {
-                        info!("[gatt] 書き込み要求: {:?}", event.data());
+                        info!("[gatt] 書き込み要求: {=[u8]:02x}", event.data());
                     }
                     _ => {}
                 };
                 // 応答を返す。dropでも送られるが、確実に送るため明示的に呼ぶ
                 match event.accept() {
                     Ok(reply) => reply.send().await,
-                    Err(e) => warn!("[gatt] 応答送信エラー: {:?}", e),
+                    Err(e) => warn!("[gatt] 応答送信エラー: {}", e),
                 };
             }
             _ => {} // その他の接続イベントは無視
         }
     };
-    info!("[gatt] 切断されました: {:?}", reason);
+    info!("[gatt] 切断されました: {}", reason);
     Ok(())
 }
 

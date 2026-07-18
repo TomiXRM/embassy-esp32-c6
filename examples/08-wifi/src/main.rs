@@ -15,6 +15,7 @@
 #![no_std]
 #![no_main]
 
+use defmt::{error, info, warn};
 use embassy_executor::Spawner;
 use embassy_net::dns::DnsQueryType;
 use embassy_net::tcp::TcpSocket;
@@ -29,7 +30,11 @@ use esp_hal::rng::Rng;
 use esp_hal::timer::timg::TimerGroup;
 use esp_radio::wifi::sta::StationConfig;
 use esp_radio::wifi::{Config as WifiConfig, ControllerConfig, Interface, WifiController};
-use log::{error, info, warn};
+// defmtログの出口を選ぶ: probe-rsではrtt-target、espflashではesp-printlnをリンクする
+#[cfg(feature = "espflash")]
+use esp_println as _;
+#[cfg(feature = "probe-rs")]
+use rtt_target as _;
 use static_cell::StaticCell;
 
 // esp-idf形式ブートローダが要求するアプリ記述子
@@ -51,10 +56,12 @@ static STACK_RESOURCES: StaticCell<StackResources<3>> = StaticCell::new();
 
 #[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
+    // probe-rsモードではRTTを初期化し、defmtのグローバルロガーを起動する
+    #[cfg(feature = "probe-rs")]
+    rtt_target::rtt_init_defmt!();
+
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
-
-    esp_println::logger::init_logger_from_env();
 
     // Wi-Fiドライバはヒープを使うため、esp-allocでヒープを確保する
     // （公式exampleと同じ構成: 回収済みRAM 64KiB + 通常RAM 36KiB）
@@ -107,7 +114,11 @@ async fn main(spawner: Spawner) -> ! {
     info!("IPアドレスの取得を待っています...");
     stack.wait_config_up().await;
     if let Some(config) = stack.config_v4() {
-        info!("IPアドレスを取得しました: {}", config.address);
+        // embassy-net(smoltcp)のIP型はdefmt::Formatを実装しないためDisplayを橋渡しする
+        info!(
+            "IPアドレスを取得しました: {}",
+            defmt::Display2Format(&config.address)
+        );
     }
 
     // TCPソケット用の送受信バッファ
@@ -126,22 +137,25 @@ async fn main(spawner: Spawner) -> ! {
                 }
             },
             Err(e) => {
-                error!("DNS解決に失敗しました: {e:?}");
+                error!("DNS解決に失敗しました: {:?}", defmt::Debug2Format(&e));
                 Timer::after(Duration::from_secs(30)).await;
                 continue;
             }
         };
-        info!("example.com のIPアドレス: {address}");
+        info!(
+            "example.com のIPアドレス: {}",
+            defmt::Display2Format(&address)
+        );
 
         // TCPソケットを作ってポート80（HTTP）へ接続
         let mut socket = TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
         socket.set_timeout(Some(Duration::from_secs(10)));
 
-        info!("{address}:80 へ接続します");
+        info!("{}:80 へ接続します", defmt::Display2Format(&address));
         match socket.connect((address, 80)).await {
             Ok(()) => info!("接続しました"),
             Err(e) => {
-                error!("接続に失敗しました: {e:?}");
+                error!("接続に失敗しました: {:?}", defmt::Debug2Format(&e));
                 Timer::after(Duration::from_secs(30)).await;
                 continue;
             }
@@ -152,7 +166,7 @@ async fn main(spawner: Spawner) -> ! {
         match socket.write_all(request).await {
             Ok(()) => info!("HTTPリクエストを送信しました"),
             Err(e) => {
-                error!("送信に失敗しました: {e:?}");
+                error!("送信に失敗しました: {:?}", defmt::Debug2Format(&e));
                 Timer::after(Duration::from_secs(30)).await;
                 continue;
             }
@@ -166,15 +180,18 @@ async fn main(spawner: Spawner) -> ! {
                 Ok(0) => break, // サーバが接続を閉じた
                 Ok(n) => total += n,
                 Err(e) => {
-                    warn!("受信中にエラーが発生しました: {e:?}");
+                    warn!(
+                        "受信中にエラーが発生しました: {:?}",
+                        defmt::Debug2Format(&e)
+                    );
                     break;
                 }
             }
         }
 
-        info!("---- 応答の先頭{total}バイト ----");
+        info!("---- 応答の先頭{}バイト ----", total);
         match core::str::from_utf8(&response[..total]) {
-            Ok(text) => info!("{text}"),
+            Ok(text) => info!("{}", text),
             Err(_) => info!("(UTF-8として表示できないデータでした)"),
         }
         info!("---- ここまで ----");
@@ -191,16 +208,16 @@ async fn main(spawner: Spawner) -> ! {
 async fn connection_task(mut controller: WifiController<'static>) {
     info!("Wi-Fi接続管理タスクを開始します");
     loop {
-        info!("SSID「{SSID}」へ接続します...");
+        info!("SSID「{}」へ接続します...", SSID);
         match controller.connect_async().await {
             Ok(connected) => {
-                info!("Wi-Fiに接続しました: {connected:?}");
+                info!("Wi-Fiに接続しました: {:?}", connected);
                 // 切断されるまでここで待つ
                 let disconnected = controller.wait_for_disconnect_async().await.ok();
-                warn!("Wi-Fiが切断されました: {disconnected:?}");
+                warn!("Wi-Fiが切断されました: {:?}", disconnected);
             }
             Err(e) => {
-                error!("Wi-Fi接続に失敗しました: {e:?}");
+                error!("Wi-Fi接続に失敗しました: {:?}", e);
             }
         }
         // 少し待ってから再接続する
