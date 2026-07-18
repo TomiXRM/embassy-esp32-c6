@@ -1,0 +1,19 @@
+[package]
+name = "sleep"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "sleep"
+path = "src/main.rs"
+
+[dependencies]
+esp-hal.workspace = true
+esp-rtos.workspace = true
+esp-bootloader-esp-idf.workspace = true
+esp-println.workspace = true
+esp-backtrace.workspace = true
+log.workspace = true
+embassy-executor.workspace = true
+embassy-time.workspace = true

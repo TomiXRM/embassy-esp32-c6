@@ -1,0 +1,13 @@
+# Node / Astro
+site/node_modules/
+site/dist/
+site/.astro/
+
+# サイトのproject節はdocs/project/から自動生成される（scripts/sync-project-docs.mjs）
+site/src/content/docs/project/
+
+# Rust
+examples/target/
+
+# OS
+.DS_Store

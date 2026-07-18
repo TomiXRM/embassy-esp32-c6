@@ -1,0 +1,40 @@
+[package]
+name = "final-wireless-button"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+# lib + 2つのbin構成:
+# - lib(final_wireless_button): アプリ本体のモジュール群
+# - bin "final-wireless-button": 送信側エントリ(src/main.rs)
+# - bin "receiver":              受信側エントリ(src/bin/receiver.rs)
+
+[lib]
+name = "final_wireless_button"
+path = "src/lib.rs"
+
+[[bin]]
+name = "final-wireless-button"
+path = "src/main.rs"
+
+[[bin]]
+name = "receiver"
+path = "src/bin/receiver.rs"
+
+# ハードウェア依存クレートは「組み込みターゲット(target_os = "none")のときだけ」
+# 有効にする。こうしておくと protocol/config/error などの純粋モジュールを
+#   cargo test -p final-wireless-button --lib --target <ホストtarget>
+# でホストPC上でも単体テストできる（詳細は src/protocol.rs のテスト参照）。
+[target.'cfg(target_os = "none")'.dependencies]
+esp-hal.workspace = true
+esp-rtos = { workspace = true, features = ["esp-radio", "esp-alloc"] }
+esp-radio = { workspace = true, features = ["wifi", "esp-now", "unstable"] }
+esp-bootloader-esp-idf.workspace = true
+esp-println.workspace = true
+esp-backtrace.workspace = true
+esp-alloc.workspace = true
+log.workspace = true
+embassy-executor.workspace = true
+embassy-time.workspace = true
+embassy-sync.workspace = true
+embassy-futures.workspace = true

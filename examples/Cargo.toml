@@ -1,0 +1,60 @@
+[workspace]
+resolver = "2"
+members = [
+    "01-blinky",
+    "02-button",
+    "03-uart",
+    "04-i2c",
+    "05-spi",
+    "06-embassy-tasks",
+    "07-channel",
+    "08-wifi",
+    "09-ble",
+    "10-esp-now",
+    "11-twai",
+    "12-sleep",
+    "13-adc-pwm",
+    "final-wireless-button",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+
+# 教材全体のバージョン固定（docs/project/versions.md と一致させること）
+[workspace.dependencies]
+esp-hal = { version = "~1.1.0", features = ["esp32c6", "unstable", "log-04"] }
+esp-rtos = { version = "0.3.0", features = ["esp32c6", "embassy", "log-04"] }
+esp-radio = { version = "0.18.0", features = ["esp32c6", "log-04"] }
+esp-bootloader-esp-idf = { version = "0.5.0", features = ["esp32c6", "log-04"] }
+esp-println = { version = "0.17.0", features = ["esp32c6", "log-04"] }
+esp-backtrace = { version = "0.19.0", features = ["esp32c6", "panic-handler", "println"] }
+esp-alloc = "0.10.0"
+log = "0.4.27"
+embassy-executor = "0.10.0"
+embassy-time = "0.5"
+embassy-sync = "0.7"
+embassy-futures = "0.1"
+embassy-net = { version = "0.9.1", features = ["tcp", "udp", "dhcpv4", "medium-ethernet", "dns"] }
+trouble-host = { version = "0.6.0", features = ["gatt", "derive"] }
+bt-hci = "0.8.0"
+embedded-hal = "1.0.0"
+embedded-hal-async = "1.0.0"
+embedded-io = "0.7.1"
+embedded-io-async = "0.7.0"
+heapless = "0.9"
+static_cell = "2.1"
+critical-section = "1.2"
+
+[profile.release]
+codegen-units = 1
+debug = 2
+debug-assertions = false
+incremental = false
+lto = "fat"
+opt-level = "s"
+overflow-checks = false
+
+[profile.dev]
+opt-level = "s"

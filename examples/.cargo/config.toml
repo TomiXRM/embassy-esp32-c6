@@ -1,0 +1,10 @@
+[target.riscv32imac-unknown-none-elf]
+runner = "espflash flash --monitor --chip esp32c6"
+
+[build]
+# esp-backtraceでバックトレースを得るために必要（性能へ多少影響）
+rustflags = ["-C", "force-frame-pointers"]
+target = "riscv32imac-unknown-none-elf"
+
+[env]
+ESP_LOG = "info"

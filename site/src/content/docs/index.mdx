@@ -1,0 +1,43 @@
+---
+title: ESP32-C6 × Rust × Embassy 教科書
+description: ArduinoからステップアップしてESP32-C6をRustとEmbassyで動かす、中学生から読める日本語教材
+template: splash
+hero:
+  tagline: Arduinoの「ひとつのloopに全部書く」から卒業して、RustとEmbassyで壊れにくい組み込みプログラムを作ろう
+  actions:
+    - text: はじめから読む
+      link: /embassy-esp32-c6/intro/
+      icon: right-arrow
+    - text: カリキュラム全体を見る
+      link: /embassy-esp32-c6/project/curriculum/
+      icon: open-book
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## この教材で学べること
+
+<CardGrid stagger>
+	<Card title="Rustの基礎" icon="seti:rust">
+		変数、所有権、struct、enum、trait。C++との違いも比べながら、Rustの考え方をゼロから学びます。
+	</Card>
+	<Card title="ESP32-C6で周辺機器を動かす" icon="setting">
+		GPIO、タイマー、ADC、PWM、UART、I2C、SPI、TWAI。実際に配線して動かします。
+	</Card>
+	<Card title="Embassyで非同期処理" icon="rocket">
+		複数の仕事をtaskに分割し、ChannelやSignalで安全に連携させる方法を学びます。
+	</Card>
+	<Card title="無線通信と省電力" icon="bars">
+		Wi-Fi、BLE、ESP-NOWを使い分け、スリープを組み合わせて電池で動く装置を作ります。
+	</Card>
+</CardGrid>
+
+## 想定している読者
+
+- ArduinoでLチカ程度は経験したことがある
+- C、C++、Rustはほとんど分からない
+- 中学生でも読める説明がほしい
+- 最終的にはArduinoより構造化されたプログラムを書きたい
+
+1ページ約15分。全12部・120ページで、最後は「無線ボタン端末」を自分で設計・実装できるようになります。

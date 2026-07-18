@@ -1,0 +1,22 @@
+[package]
+name = "esp-now"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "esp-now"
+path = "src/main.rs"
+
+[dependencies]
+esp-hal.workspace = true
+esp-rtos = { workspace = true, features = ["esp-radio", "esp-alloc"] }
+esp-radio = { workspace = true, features = ["wifi", "esp-now", "unstable"] }
+esp-bootloader-esp-idf.workspace = true
+esp-println.workspace = true
+esp-backtrace.workspace = true
+esp-alloc.workspace = true
+log.workspace = true
+embassy-executor.workspace = true
+embassy-time.workspace = true
+embassy-futures.workspace = true
