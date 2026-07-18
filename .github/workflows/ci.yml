@@ -33,7 +33,9 @@ jobs:
           done
       - name: host tests (final-wireless-button protocol)
         working-directory: examples
-        run: cargo test -p final-wireless-button --lib
+        # .cargo/config.toml の既定ターゲットは riscv32imac(no_std) なので、
+        # ホストで走らせる純粋ロジックのテストはホストターゲットを明示する。
+        run: cargo test -p final-wireless-button --lib --target x86_64-unknown-linux-gnu
 
   site:
     name: build site
