@@ -90,6 +90,11 @@ export default defineConfig({
 					collapsed: true,
 				},
 				{
+					label: '応用編 キーボードを作る視点',
+					items: [{ autogenerate: { directory: 'keyboard' } }],
+					collapsed: true,
+				},
+				{
 					label: '付録',
 					items: [{ autogenerate: { directory: 'appendix' } }],
 					collapsed: true,

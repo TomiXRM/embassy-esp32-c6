@@ -209,6 +209,23 @@ graph LR
 | 9 | part12/09-testing | テストと保守 | 純粋ロジック分離とホストテストができる | final |
 | 10 | part12/10-final-project | 最終プロジェクト — 無線ボタン端末 | 要求仕様を満たす設計を説明・実装できる | final-wireless-button |
 
+## 応用編 キーボードを作る視点（120ページの後の発展コンテンツ）
+
+実在のEmbassy製キーボードファームウェア（Keyball61/RP2040、Zenn記事 https://zenn.dev/nazo6/articles/keyball-embassy-rp2040 ）を教材の知識で読み解き、ESP32-C6へ翻訳する。前提は第12部まで。調査資料: docs/research/keyball-embassy.md
+
+| # | ファイル | タイトル | 学習目標 | example |
+|---|---|---|---|---|
+| 1 | keyboard/01-intro | キーボードは組み込みの総合格闘技 | 題材と教材各部の対応を説明できる | - |
+| 2 | keyboard/02-architecture | 実物のアーキテクチャを読む | join/selectツリー構成を教材の判断基準で分析できる | - |
+| 3 | keyboard/03-matrix | キーマトリクスの原理 | マトリクス/Duplex/ゴーストとダイオードを説明できる | - |
+| 4 | keyboard/04-scan-c6 | C6でスキャンを書く | マトリクススキャン+デバウンスを実装できる | 14-keymatrix |
+| 5 | keyboard/05-keymap-state | レイヤとTap-Holdの状態機械 | 型でキーマップを設計し、Tap-Holdの難しさを説明できる | - |
+| 6 | keyboard/06-split-comm | 左右をつなぐ — 1本の線の上のプロトコル | 半二重通信の制約と信頼性設計の要否を説明できる | final |
+| 7 | keyboard/07-usb-hid | USB HIDの仕組みと、C6にUSBがない話 | HIDレポートの構造とC6のUSB制約を説明できる | - |
+| 8 | keyboard/08-ble-hid | C6の答え — BLE HIDキーボード | HOGPのGATT構造を説明できる | 15-ble-hid |
+| 9 | keyboard/09-integration | 統合の設計 — 劣化運転と共有リソース | Option化による劣化運転と周期の違う仕事の共存を設計できる | - |
+| 10 | keyboard/10-ecosystem | エコシステムと次の一歩 | rktk/RMK/rumcakeの位置づけと自分の次の一歩を選べる | - |
+
 ## 付録（ページ数に含めない補助コンテンツ）
 
 | ファイル | タイトル |

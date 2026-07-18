@@ -1,0 +1,28 @@
+[package]
+name = "ble-hid"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "ble-hid"
+path = "src/main.rs"
+
+[dependencies]
+esp-hal.workspace = true
+esp-rtos = { workspace = true, features = ["esp-radio", "esp-alloc"] }
+esp-radio = { workspace = true, features = ["ble", "unstable"] }
+esp-bootloader-esp-idf.workspace = true
+esp-println.workspace = true
+esp-backtrace.workspace = true
+esp-alloc.workspace = true
+log.workspace = true
+embassy-executor.workspace = true
+embassy-time.workspace = true
+embassy-futures.workspace = true
+# embassy-sync と static_cell は #[gatt_server] / #[gatt_service] マクロが
+# 展開後のコードで使うため必要（trouble-host 0.6 は embassy-sync 0.7 系に依存）
+embassy-sync.workspace = true
+static_cell.workspace = true
+trouble-host.workspace = true
+bt-hci.workspace = true

@@ -14,6 +14,10 @@ members = [
     "11-twai",
     "12-sleep",
     "13-adc-pwm",
+    "14-keymatrix",
+    "15-ble-hid",
+    "16-sensor-node",
+    "17-https",
     "final-wireless-button",
 ]
 
@@ -44,7 +48,10 @@ embedded-hal-async = "1.0.0"
 embedded-io = "0.7.1"
 embedded-io-async = "0.7.0"
 heapless = "0.9"
+bme280-rs = { version = "0.3", default-features = false, features = ["async"] }
 static_cell = "2.1"
+# HTTPSクライアント（TLS 1.3のみのembedded-tlsをTLSバックエンドに使用）
+reqwless = { version = "0.14", default-features = false, features = ["embedded-tls", "alloc", "log"] }
 critical-section = "1.2"
 
 [profile.release]
