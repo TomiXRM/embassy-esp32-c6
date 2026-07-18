@@ -226,6 +226,42 @@ graph LR
 | 9 | keyboard/09-integration | 統合の設計 — 劣化運転と共有リソース | Option化による劣化運転と周期の違う仕事の共存を設計できる | - |
 | 10 | keyboard/10-ecosystem | エコシステムと次の一歩 | rktk/RMK/rumcakeの位置づけと自分の次の一歩を選べる | - |
 
+## 応用編2 センサ端末を作る視点（発展コンテンツ）
+
+題材: claudiomattera/esp32c3-embassy（MIT OR Apache-2.0、現行スタックと同世代のEmbassy気象ステーション）。調査資料: docs/research/esp32c3-embassy.md
+
+| # | ファイル | タイトル | example |
+|---|---|---|---|
+| 1 | sensor-node/01-intro | 電池で動く測定端末という応用 | - |
+| 2 | sensor-node/02-driver-crates | ドライバクレートを使うという選択 | 16-sensor-node |
+| 3 | sensor-node/03-sensor-c6 | BME280を読む | 16-sensor-node |
+| 4 | sensor-node/04-rtc-ram | Deep Sleepを生き残るデータ — RTC RAM | 16-sensor-node |
+| 5 | sensor-node/05-duty-cycle | デューティサイクル設計 | 16-sensor-node |
+| 6 | sensor-node/06-clock | 時計のないマイコンが時刻を知る方法 | - |
+| 7 | sensor-node/07-https | no_stdでHTTPS | 17-https |
+| 8 | sensor-node/08-error-design | taskはResultを返せない — 実プロジェクトのエラー設計 | - |
+| 9 | sensor-node/09-peripherals-types | 型でピンの持ち主を決める | - |
+| 10 | sensor-node/10-roadmap | 自分の測定端末を作る | - |
+
+## 応用編3 ロボットファームを読む（発展コンテンツ・激重）
+
+題材: luhbots/luhsoccer_firmware（MIT、RoboCup SSL実戦投入の4基板構成ファームウェア）。調査資料: docs/research/luhsoccer-firmware.md
+
+| # | ファイル | タイトル |
+|---|---|---|
+| 1 | robot/01-intro | 実戦のロボットファームウェアを読む |
+| 2 | robot/02-system | システム概念図 — 4枚の基板と1本のボール |
+| 3 | robot/03-basestation | 基地局 — EmbassyではなくRTICという選択 |
+| 4 | robot/04-radio | 無線リンク — 50ミリ秒で止まる設計 |
+| 5 | robot/05-maincontroller | メイン基板を読む — 11個のtaskの分業 |
+| 6 | robot/06-observable | Observableを読む — 131行の自作同期プリミティブ |
+| 7 | robot/07-uart-protocol | 基板間UARTプロトコル — postcard+COBS+CRC16 |
+| 8 | robot/08-motion | 1kHzの制御ループ — モータ基板を読む |
+| 9 | robot/09-kicker-safety | 230Vを積んだロボットの安全設計 |
+| 10 | robot/10-failsafe | 多層フェイルセーフ — 止まれることが強さ |
+| 11 | robot/11-extensibility | アプリ追加=task追加 — asyncが効く理由 |
+| 12 | robot/12-lessons | 持ち帰るもの — 17,000行から教材へ |
+
 ## 付録（ページ数に含めない補助コンテンツ）
 
 | ファイル | タイトル |

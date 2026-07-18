@@ -95,6 +95,16 @@ export default defineConfig({
 					collapsed: true,
 				},
 				{
+					label: '応用編 センサ端末を作る視点',
+					items: [{ autogenerate: { directory: 'sensor-node' } }],
+					collapsed: true,
+				},
+				{
+					label: '応用編 ロボットファームを読む',
+					items: [{ autogenerate: { directory: 'robot' } }],
+					collapsed: true,
+				},
+				{
 					label: '付録',
 					items: [{ autogenerate: { directory: 'appendix' } }],
 					collapsed: true,

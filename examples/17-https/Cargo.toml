@@ -26,3 +26,5 @@ embedded-io-async.workspace = true
 static_cell.workspace = true
 # HTTPSクライアント（TLSはembedded-tls = TLS 1.3のみ）
 reqwless.workspace = true
+# 直接は使わないが、embedded-tls 0.18と互換のあるrc版にderを固定するために明示する
+der.workspace = true

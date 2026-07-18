@@ -52,6 +52,9 @@ bme280-rs = { version = "0.3", default-features = false, features = ["async"] }
 static_cell = "2.1"
 # HTTPSクライアント（TLS 1.3のみのembedded-tlsをTLSバックエンドに使用）
 reqwless = { version = "0.14", default-features = false, features = ["embedded-tls", "alloc", "log"] }
+# embedded-tls 0.18はderのプレリリース版APIに依存しており、der 0.8.0以降ではビルドが壊れる。
+# そのためembedded-tls 0.18が開発された時点のrc版に固定する（cargo updateでの破壊を防ぐ）
+der = "=0.8.0-rc.10"
 critical-section = "1.2"
 
 [profile.release]

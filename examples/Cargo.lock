@@ -581,9 +581,9 @@ dependencies = [
 
 [[package]]
 name = "der"
-version = "0.8.1"
+version = "0.8.0-rc.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a69dedd701da44b0536442edf09c81a64b0ab97a7a4a5e3d1971f00027cbc63d"
+checksum = "02c1d73e9668ea6b6a28172aa55f3ebec38507131ce179051c8033b5c6037653"
 dependencies = [
  "const-oid 0.10.2",
  "der_derive",
@@ -984,7 +984,7 @@ checksum = "09d1e46155b61b5b5cc486e01dacc55a623689bded89835965b15436734f078a"
 dependencies = [
  "aes-gcm",
  "const-oid 0.10.2",
- "der 0.8.1",
+ "der 0.8.0-rc.10",
  "digest",
  "ecdsa",
  "ed25519-dalek",
@@ -1756,6 +1756,7 @@ checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
 name = "https"
 version = "0.1.0"
 dependencies = [
+ "der 0.8.0-rc.10",
  "embassy-executor",
  "embassy-net",
  "embassy-time",
