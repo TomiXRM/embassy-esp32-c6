@@ -262,6 +262,23 @@ graph LR
 | 11 | robot/11-extensibility | アプリ追加=task追加 — asyncが効く理由 |
 | 12 | robot/12-lessons | 持ち帰るもの — 17,000行から教材へ |
 
+## 応用編4 ESP32-C6の深淵 — キモい機能図鑑（発展コンテンツ）
+
+テーマ:「CPUに全部やらせるのをやめ、専用ハードウェアへ仕事を分担させよう」。各機能に「Rustからの現在地」を付記。調査資料: docs/research/weird-features-draft.md / weird-features-rust.md
+
+| # | ファイル | タイトル | example |
+|---|---|---|---|
+| 1 | deep-dive/01-intro | CPUに全部やらせない — 深淵への招待 | - |
+| 2 | deep-dive/02-gpio-matrix | GPIO Matrix — チップ内蔵のプログラム可能な配線盤 | - |
+| 3 | deep-dive/03-rmt | RMT — 波形をハードウェアに演奏させる | 18-rmt-ws2812 |
+| 4 | deep-dive/04-pcnt | PCNT — CPUを使わずに数え、方向まで分かる | 19-pcnt |
+| 5 | deep-dive/05-etm | ETM — 割り込みすら使わない、周辺回路の直結 | 20-etm |
+| 6 | deep-dive/06-ledc-dma | ハードに流れを任せる — LEDCフェードとDMA | 21-ledc-fade |
+| 7 | deep-dive/07-mcpwm | MCPWM — モーター制御工場 | - |
+| 8 | deep-dive/08-lp-core | LPコア — 地下室でもう一人が働いている | - |
+| 9 | deep-dive/09-bus-and-bits | 自作バスと専用命令 — PARLIO・Dedicated GPIO・SDM | - |
+| 10 | deep-dive/10-zukan | 図鑑の残りと、深淵の歩き方 | - |
+
 ## 付録（ページ数に含めない補助コンテンツ）
 
 | ファイル | タイトル |

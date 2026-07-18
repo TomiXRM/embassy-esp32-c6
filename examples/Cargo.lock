@@ -1464,6 +1464,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "etm"
+version = "0.1.0"
+dependencies = [
+ "embassy-executor",
+ "embassy-time",
+ "esp-backtrace",
+ "esp-bootloader-esp-idf",
+ "esp-hal",
+ "esp-println",
+ "esp-rtos",
+ "log",
+]
+
+[[package]]
 name = "ff"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1898,6 +1912,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
+name = "ledc-fade"
+version = "0.1.0"
+dependencies = [
+ "embassy-executor",
+ "embassy-time",
+ "esp-backtrace",
+ "esp-bootloader-esp-idf",
+ "esp-hal",
+ "esp-println",
+ "esp-rtos",
+ "log",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2070,6 +2098,20 @@ name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+
+[[package]]
+name = "pcnt"
+version = "0.1.0"
+dependencies = [
+ "embassy-executor",
+ "embassy-time",
+ "esp-backtrace",
+ "esp-bootloader-esp-idf",
+ "esp-hal",
+ "esp-println",
+ "esp-rtos",
+ "log",
+]
 
 [[package]]
 name = "pin-project-lite"
@@ -2334,6 +2376,20 @@ dependencies = [
  "libc",
  "rustversion",
  "svgbobdoc",
+]
+
+[[package]]
+name = "rmt-ws2812"
+version = "0.1.0"
+dependencies = [
+ "embassy-executor",
+ "embassy-time",
+ "esp-backtrace",
+ "esp-bootloader-esp-idf",
+ "esp-hal",
+ "esp-println",
+ "esp-rtos",
+ "log",
 ]
 
 [[package]]

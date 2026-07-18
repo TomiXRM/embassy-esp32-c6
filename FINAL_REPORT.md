@@ -1,6 +1,25 @@
 # 最終報告
 
-作成日: 2026-07-18
+作成日: 2026-07-18（本編）/ 同日追記: 応用編1〜4
+
+## 追記: 応用編（本編120ページ完成後の拡張）
+
+本編に加えて、実在プロジェクトを読み解く応用編4本（計42ページ、全て完全原稿）とexamples 8本を追加した。
+
+| 応用編 | ページ | 題材（ライセンス） | 追加example |
+|---|---|---|---|
+| 1 キーボードを作る視点 | 10 | Keyball Embassy/RP2040ファーム（ライセンス無し→転載ゼロ・独自再構成） | 14-keymatrix, 15-ble-hid |
+| 2 センサ端末を作る視点 | 10 | esp32c3-embassy（MIT/Apache-2.0、同世代スタック） | 16-sensor-node, 17-https |
+| 3 ロボットファームを読む | 12 | luhsoccer_firmware（LuhBots, MIT、RoboCup SSL実戦機） | - |
+| 4 深淵・キモい機能図鑑 | 10 | ESP32-C6の周辺機能（テーマ: CPUに全部やらせない） | 18-rmt-ws2812, 19-pcnt, 20-etm, 21-ledc-fade |
+
+- 総計: サイト175ページ（本編120+付録3+応用編42+その他）、examples 22クレート全cargo check通過
+- 応用編4は全機能に「Rustからの現在地」（stable/unstable/ESP-IDFのみ）を付記。ETM実例（CPU・割り込み不関与のボタン→LED直結）とRMTによるオンボードWS2812点灯を含む
+- チーム実績等の事実は公式一次資料で裏取り（LuhBotsのSSL成績、SSLルール、TDP）
+- 特記: 応用編3の執筆中にluhsoccer_firmwareのCRC実装の不具合疑い（digest()使い捨てによるCRC定数化）を発見し、実コード検証の上で教訓として掲載
+
+---
+
 公開サイト: https://tomixrm.github.io/embassy-esp32-c6/
 リポジトリ: https://github.com/TomiXRM/embassy-esp32-c6
 

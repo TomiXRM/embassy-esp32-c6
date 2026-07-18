@@ -18,6 +18,10 @@ members = [
     "15-ble-hid",
     "16-sensor-node",
     "17-https",
+    "18-rmt-ws2812",
+    "19-pcnt",
+    "20-etm",
+    "21-ledc-fade",
     "final-wireless-button",
 ]
 

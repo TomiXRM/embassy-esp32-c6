@@ -105,6 +105,11 @@ export default defineConfig({
 					collapsed: true,
 				},
 				{
+					label: '応用編 ESP32-C6の深淵',
+					items: [{ autogenerate: { directory: 'deep-dive' } }],
+					collapsed: true,
+				},
+				{
 					label: '付録',
 					items: [{ autogenerate: { directory: 'appendix' } }],
 					collapsed: true,
