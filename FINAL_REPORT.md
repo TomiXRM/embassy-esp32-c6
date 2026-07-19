@@ -8,8 +8,17 @@
 - 実施: 全22 examplesを esp-println+log → **defmt(RTT)** に移行。`.cargo/config.toml` の runner を `probe-rs run --chip esp32c6` に。espflashは `--features espflash`（defmt-over-serial）で残す二本立て
 - 検証: `cargo check --workspace`（probe-rs既定）と全22クレートの `--features espflash` の**両モードでゼロエラー**、`cargo fmt --check` クリーン、final-wireless-buttonのホストテスト10/10維持。CIに両モード＋ホストテストを追加
 - defmtの書式差（精度指定不可→float全精度表示、byte列は `{=[u8]:02x}`、Format非実装型は Display2Format/Debug2Format）を各クレートで解消
-- **実機未検証**: 作業時に実機（XIAO ESP32-C6）がUSBで `!matched`（構成未確定）となりダウンロードモードに入れられず、書き込み・実機ログ表示は未確認。コンパイル検証のみ。ボードをダウンロードモードにできれば検証再開可能
-- USB診断結果: デバイスはEspressif VID 0x303A / PID 0x1001（ネイティブUSB Serial/JTAG）で列挙されるがインターフェース0個。ROM側のクリーンUSB（BOOT+RESETでダウンロードモード）で回避する想定
+## 追記(2026-07-19): 実機検証（XIAO ESP32-C6 + probe-rs）
+
+前回 `!matched` で詰まっていた実機が復帰し、probe-rs（JTAG経由、RISC-V IDCODE=Espressif確認）で書き込み・実機動作を検証した。
+
+- **書き込み・defmtログ表示: 成功**（`cargo run` → probe-rs run → フラッシュ＋RTTでdefmtログ表示。日本語も正常）。probe-rs + defmt 移行が実機でエンドツーエンドに動作
+- **20/22 exampleを書き込み・起動確認**（panic無し）。うち **14例は挙動までdefmtログで確認（hardware-tested）**:
+  - blinky, embassy-tasks（マルチタスク）, channel（timeout）, ledc-fade（HWフェード中もCPU別処理）, etm（CPU非介入結線）, adc-pwm（ADC実測変動）, sleep（Deep Sleep突入をUSB電断で確認）, i2c（バススキャン）, ble（C6-BUTTONアドバタイズ）, ble-hid（C6-KEYBOARDアドバタイズ）, esp-now（ブロードキャスト送信Ok）, wifi（スタック起動＋AP探索）, sensor-node（劣化運転＋RTC RAM起動回数）
+- **機能未確認（起動のみ）**: uart/spi（ループバック用ジャンパ無し）, twai（GPIO2↔GPIO3ジャンパ必須）, pcnt（GPIO10↔GPIO18ジャンパ必須）, button/keymatrix（ボタン未配線・未操作）, rmt-ws2812（XIAOはGPIO8にWS2812非搭載）
+- **未フラッシュ**: final-wireless-button（2台目必要）, https（認証情報必要）。いずれも構成要素は実機確認済み
+- ボード差の注意: 基準はDevKitC-1、実機はXIAO ESP32-C6。オンボードLEDやWS2812の有無が異なる（progress.md参照）
+- 復帰の教訓: 前回の `!matched` はダウンロードモード（BOOT+RESET）または再接続で解消。probe-rsはCDCシリアルではなくJTAGインターフェースを使うためシリアルポート(/dev/cu.usbmodem)が出なくても書き込める
 
 
 
